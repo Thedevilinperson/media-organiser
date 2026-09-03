@@ -1,5 +1,5 @@
 name: "Collectiekaart Mediabeheerder"
-version: "1.0.0"
+version: "0.1.0"
 slug: "collectiekaart_mediabeheerder"
 description: "Beheer je boeken, strips, comics, manga, anime, cd's en dvd's"
 url: "https://www.home-assistant.io/"
