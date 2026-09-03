@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Overzicht — Collectiekaart{% endblock %}
+{% block content %}
+
+<div class="totals-row">
+  {% for label, count in totals %}
+    <div class="total-chip">{{ label }} <strong>{{ count }}</strong></div>
+  {% endfor %}
+  <div class="total-chip" style="background: var(--accent-dark);">Totaal <strong>{{ items|length }}</strong>{% if q or type_filter or owner_filter or series_filter or title_filter %} (gefilterd){% endif %}</div>
+</div>
+
+<form method="get" class="panel">
+  <div class="search-row">
+    <input type="text" name="q" value="{{ q }}" placeholder="Zoek over alle kolommen (titel, reeks, auteur, commentaar, ...)">
+    <button type="submit">Zoeken</button>
+    {% if q or type_filter or owner_filter or series_filter or title_filter %}
+      <a class="btn btn-outline" href="{{ url_for('index') }}">Wis filters</a>
+    {% endif %}
+  </div>
+  <div class="filter-bar">
+    <select name="type" onchange="this.form.submit()">
+      <option value="">Alle types</option>
+      {% for t in type_options %}<option value="{{ t }}" {% if type_filter==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+    <select name="owner" onchange="this.form.submit()">
+      <option value="">Alle eigenaars</option>
+      {% for o in owner_options %}<option value="{{ o }}" {% if owner_filter==o %}selected{% endif %}>{{ o }}</option>{% endfor %}
+    </select>
+    <select name="series" onchange="this.form.submit()">
+      <option value="">Alle reeksen</option>
+      {% for s in series_options %}<option value="{{ s }}" {% if series_filter==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+    <select name="title" onchange="this.form.submit()">
+      <option value="">Alle titels</option>
+      {% for tt in title_options %}<option value="{{ tt }}" {% if title_filter==tt %}selected{% endif %}>{{ tt }}</option>{% endfor %}
+    </select>
+  </div>
+</form>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Kaft</th>
+          <th>Type</th>
+          <th>Reeks</th>
+          <th>Nr.</th>
+          <th>Titel</th>
+          <th>Auteur</th>
+          <th>Eigenaar</th>
+          <th>Staat</th>
+          <th>Uitgeleend?</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in items %}
+        <tr>
+          <td data-label="Kaft">
+            {% if m.cover_image %}<img class="cover-thumb" src="{{ url_for('static', filename='uploads/' ~ m.cover_image) }}" alt="">{% else %}—{% endif %}
+          </td>
+          <td data-label="Type"><span class="type-badge">{{ m.media_type.label if m.media_type else '—' }}</span></td>
+          <td data-label="Reeks">{{ m.series or '—' }}</td>
+          <td data-label="Nr." class="mono">{{ m.series_number if m.series_number is not none else '—' }}</td>
+          <td data-label="Titel"><strong>{{ m.title }}</strong></td>
+          <td data-label="Auteur">{{ m.author or m.musician or '—' }}</td>
+          <td data-label="Eigenaar">{{ m.owner.name if m.owner else '—' }}</td>
+          <td data-label="Staat">{{ m.condition or '—' }}</td>
+          <td data-label="Uitgeleend?">
+            {% if m.active_loan %}<span class="overdue">bij {{ m.active_loan.borrower_name }}</span>{% else %}nee{% endif %}
+          </td>
+          <td data-label="" class="row-actions">
+            <a class="btn btn-outline btn-small" href="{{ url_for('edit_media', media_id=m.id) }}">Wijzig</a>
+            <form method="post" action="{{ url_for('delete_media', media_id=m.id) }}" onsubmit="return confirm('Verwijderen?');">
+              <button class="btn-danger btn-small" type="submit">Verwijder</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="muted">Geen media gevonden.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
