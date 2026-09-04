@@ -43,7 +43,11 @@
 <div class="panel">
   <h2>Items zonder waarde</h2>
   {% if without_value %}
-    <p class="muted">Klik op "Zoek richtprijs" om Lastdodo te raadplegen, of vul de waarde zelf in bij het item.</p>
+    <p class="muted">
+      Vul de waarde hier meteen in, of laat de app een richtprijs zoeken bij LastDodo. LastDodo
+      staat automatisch opzoeken lang niet altijd toe; in dat geval verschijnt er een zoeklink
+      waarmee je in één klik zelf kan kijken.
+    </p>
     <div class="table-wrap">
       <table class="data-table">
         <thead><tr><th>Titel</th><th>Reeks</th><th>Type</th><th>Waarde</th><th></th></tr></thead>
@@ -53,10 +57,20 @@
             <td data-label="Titel">{{ m.title }}</td>
             <td data-label="Reeks">{{ m.series or '—' }}</td>
             <td data-label="Type"><span class="type-badge">{{ m.media_type.label if m.media_type else '—' }}</span></td>
-            <td data-label="Waarde" class="mono" id="value-{{ m.id }}">—</td>
+            <td data-label="Waarde">
+              <div class="search-row value-row">
+                <input type="text" inputmode="decimal" class="mono value-input"
+                       aria-label="Waarde voor {{ m.title }}" placeholder="€"
+                       data-url="{{ url_for('analysis.value_save', media_id=m.id) }}">
+                <button class="btn btn-outline btn-small value-save-btn">Bewaar</button>
+              </div>
+            </td>
             <td data-label="">
-              <button class="btn btn-outline btn-small estimate-btn"
-                      data-id="{{ m.id }}" data-target="value-{{ m.id }}">Zoek richtprijs</button>
+              <div class="value-actions">
+                <button class="btn btn-outline btn-small estimate-btn"
+                        data-id="{{ m.id }}" data-target="status-{{ m.id }}">Zoek richtprijs</button>
+                <div id="status-{{ m.id }}" class="muted" aria-live="polite"></div>
+              </div>
             </td>
           </tr>
           {% endfor %}

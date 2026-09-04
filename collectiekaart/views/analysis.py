@@ -4,9 +4,10 @@ from sqlalchemy.orm import joinedload
 
 from extensions import db
 from models import Media, MediaType
-from security import safe_float
+from flask import flash, redirect, url_for
+from security import clean_text, safe_float
 from services.series_analysis import check_new_releases, missing_numbers_per_series
-from services.value_estimation import estimate_value_lastdodo
+from services.value_estimation import estimate_value_lastdodo, search_url
 
 analysis_bp = Blueprint("analysis", __name__, url_prefix="/analyse")
 
@@ -72,6 +73,7 @@ def value():
 
 @analysis_bp.route("/waarde/schat/<int:media_id>", methods=["POST"])
 def value_estimate(media_id):
+    """Zoekt een richtprijs en bewaart die meteen bij het item."""
     media = db.get_or_404(Media, media_id)
     result = estimate_value_lastdodo(media.title, media.series)
     if result.get("value"):
@@ -79,3 +81,29 @@ def value_estimate(media_id):
         media.value_source = "lastdodo"
         db.session.commit()
     return jsonify(result)
+
+
+@analysis_bp.route("/waarde/opzoeken", methods=["POST"])
+def value_lookup():
+    """
+    Zoekt een richtprijs op titel en reeks, zonder iets te bewaren. Wordt
+    gebruikt door de knop op het invulformulier, waar een item nog geen
+    nummer heeft omdat het nog niet opgeslagen is.
+    """
+    title = clean_text(request.form.get("title"), 300, allow_empty_none=False)
+    series = clean_text(request.form.get("series"), 300)
+    if not title:
+        return jsonify({"ok": False, "error": "Vul eerst een titel in.",
+                        "value": None, "url": search_url("")})
+    return jsonify(estimate_value_lastdodo(title, series))
+
+
+@analysis_bp.route("/waarde/<int:media_id>/opslaan", methods=["POST"])
+def value_save(media_id):
+    """Waarde rechtstreeks vanaf het waardeoverzicht invullen."""
+    media = db.get_or_404(Media, media_id)
+    value = safe_float(request.form.get("value"), None, 0, 1000000)
+    media.estimated_value = value
+    media.value_source = "manueel" if value is not None else None
+    db.session.commit()
+    return jsonify({"ok": True, "value": value})

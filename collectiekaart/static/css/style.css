@@ -451,3 +451,9 @@ table.data-table tfoot td { border-top: 2px solid var(--ink); border-bottom: non
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* Waardeoverzicht: invulveld per rij */
+.value-row { margin: 0; gap: 6px; flex-wrap: nowrap; }
+.value-row .value-input { flex: 0 1 90px; min-width: 70px; padding: 5px 8px; }
+.value-actions { min-width: 150px; }
+.value-actions .muted { font-size: 12px; margin-top: 4px; }

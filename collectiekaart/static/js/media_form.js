@@ -32,3 +32,60 @@
   select.addEventListener("change", update);
   update();
 })();
+
+/* Richtprijs opzoeken vanaf het invulformulier. */
+(function () {
+  "use strict";
+
+  var button = document.getElementById("value-lookup-btn");
+  if (!button) { return; }
+
+  var status = document.getElementById("value-lookup-status");
+  var valueField = document.getElementById("estimated_value");
+
+  function showLink(url, text) {
+    status.textContent = text + " ";
+    var link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "Zelf kijken bij LastDodo";
+    status.appendChild(link);
+  }
+
+  button.addEventListener("click", function () {
+    var title = document.getElementById("title").value.trim();
+    var seriesField = document.getElementById("series");
+    if (!title) {
+      status.textContent = "Vul eerst een titel in.";
+      return;
+    }
+
+    status.textContent = "Bezig met opzoeken…";
+    button.disabled = true;
+
+    var body = new FormData();
+    body.append("title", title);
+    if (seriesField) { body.append("series", seriesField.value.trim()); }
+
+    fetch(button.dataset.url, {
+      method: "POST",
+      body: body,
+      headers: { "X-CSRF-Token": window.Collectiekaart.csrf() },
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        button.disabled = false;
+        if (data.value) {
+          valueField.value = String(data.value).replace(".", ",");
+          status.textContent = "Richtprijs gevonden. Controleer ze en sla het item op.";
+        } else {
+          showLink(data.url, data.error || "Niets gevonden.");
+        }
+      })
+      .catch(function () {
+        button.disabled = false;
+        status.textContent = "Opzoeken lukte niet.";
+      });
+  });
+})();

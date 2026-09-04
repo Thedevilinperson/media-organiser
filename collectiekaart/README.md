@@ -15,7 +15,8 @@ Assistant, en is bruikbaar op een smartphone.
   een foto van de kaft te laten analyseren.
 - **Reeksanalyse**: welke nummers ontbreken in je reeksen, en zijn er nummers
   verschenen die je nog niet hebt.
-- **Waarde**: totaal per type, met een richtprijs per item via Lastdodo.
+- **Waarde**: totaal per type, met een waarde die je per item meteen kan invullen en een poging
+  tot richtprijs via LastDodo.
 - **Uitleen**: wie leende wat en sinds wanneer, met een melding in Home Assistant
   na dertig dagen.
 - **Instellingen**: eigenaars, types media, eigen velden, AI-sleutel, de
@@ -35,9 +36,13 @@ het adres van je eigen model in en er verlaat niets je netwerk.
 **Nieuwe nummers opsporen via De Poort.** Dit gebeurt door hun zoekpagina uit te
 lezen, dus zonder AI, gratis en vanaf je eigen toestel. Het is wel afhankelijk
 van de opbouw van hun website: wijzigt die, dan moet
-`services/series_analysis.py` bijgewerkt worden. Hetzelfde geldt voor Lastdodo in
-`services/value_estimation.py`. Beide functies falen zacht, met een nette melding
-in de app, zodat de rest gewoon blijft werken.
+`services/series_analysis.py` bijgewerkt worden. Voor LastDodo ligt het anders: die site beschermt zich actief tegen
+geautomatiseerde aanvragen en antwoordt op een verzoek vanaf een server meestal
+met een 403. Dat is een bewuste keuze van hen, geen storing, en er valt niet
+omheen te werken zonder hun voorwaarden te schenden. De app doet één nette
+poging en toont daarna een zoeklink naar LastDodo, zodat je de cataloguswaarde in
+één klik zelf kan opzoeken en meteen in de lijst invullen. Beide functies falen
+zacht, zodat de rest gewoon blijft werken.
 
 ## Standalone op Windows
 

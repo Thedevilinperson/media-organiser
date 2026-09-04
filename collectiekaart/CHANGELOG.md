@@ -1,5 +1,17 @@
 # Wijzigingen
 
+## 0.1.2
+
+- Het veld "Staat" stond alleen bij strips en verscheen dus niet bij een boek.
+  Het staat nu bij elk type in het algemene deel van het formulier.
+- Een knop "Zoek richtprijs" op het invulformulier zelf, die werkt op titel en
+  reeks en dus ook bij een item dat nog niet opgeslagen is.
+- Op de waardepagina kan je de waarde per rij rechtstreeks invullen en bewaren,
+  zonder het item te openen.
+- LastDodo blokkeert geautomatiseerde aanvragen en gaf daardoor een 403. De app
+  meldt dat nu in gewone taal en toont een zoeklink naar hun zoekpagina in plaats
+  van een technische foutmelding.
+
 ## 0.1.1 — scanner
 
 - De camera startte niet op Android. De ingebouwde barcodelezer van de browser

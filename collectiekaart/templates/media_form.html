@@ -73,6 +73,16 @@
         </div>
 
         <div class="form-field">
+          <label for="condition">Staat</label>
+          <select name="condition" id="condition">
+            <option value="">—</option>
+            {% for c in conditions %}
+              <option value="{{ c }}" {% if media and media.condition == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field">
           <label for="cover_image_file">Kaftfoto</label>
           <input type="file" name="cover_image_file" id="cover_image_file" accept="image/*">
           {% if media and media.cover_image %}
@@ -91,15 +101,6 @@
           <input type="text" name="collection" id="collection" value="{{ val('collection') }}"></div>
         <div class="form-field"><label for="collection_number">Nummer in de collectie</label>
           <input type="number" min="0" name="collection_number" id="collection_number" value="{{ media.collection_number if media and media.collection_number is not none else '' }}"></div>
-        <div class="form-field">
-          <label for="condition">Staat</label>
-          <select name="condition" id="condition">
-            <option value="">—</option>
-            {% for c in conditions %}
-              <option value="{{ c }}" {% if media and media.condition == c %}selected{% endif %}>{{ c }}</option>
-            {% endfor %}
-          </select>
-        </div>
         <div class="form-field checkbox">
           <input type="checkbox" name="is_duplicate" id="is_duplicate" {% if media and media.is_duplicate %}checked{% endif %}>
           <label for="is_duplicate">Ik heb dit dubbel</label>
@@ -158,9 +159,15 @@
       <div class="form-grid">
         <div class="form-field">
           <label for="estimated_value">Geschatte waarde in euro</label>
-          <input type="text" inputmode="decimal" name="estimated_value" id="estimated_value"
-                 value="{{ media.estimated_value if media and media.estimated_value is not none else '' }}">
-          {% if media and media.value_source == 'lastdodo' %}<p class="hint">Richtprijs opgehaald via Lastdodo.</p>{% endif %}
+          <div class="search-row">
+            <input type="text" inputmode="decimal" name="estimated_value" id="estimated_value"
+                   value="{{ media.estimated_value if media and media.estimated_value is not none else '' }}">
+            <button type="button" class="btn btn-outline" id="value-lookup-btn"
+                    data-url="{{ url_for('analysis.value_lookup') }}">Zoek richtprijs</button>
+          </div>
+          <p class="hint" id="value-lookup-status" aria-live="polite">
+            {% if media and media.value_source == 'lastdodo' %}Richtprijs eerder opgehaald bij LastDodo.{% endif %}
+          </p>
         </div>
         <div class="form-field wide">
           <label for="comment">Commentaar</label>
