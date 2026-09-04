@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Pagina niet gevonden — Collectiekaart{% endblock %}
+{% block content %}
+<div class="panel">
+  <h2>Deze pagina bestaat niet</h2>
+  <p class="muted intro">
+    Mogelijk staat er een oude link in je bladwijzers. Ga terug naar het overzicht om verder te
+    werken.
+  </p>
+  <div class="form-actions">
+    <a class="btn btn-accent" href="{{ url_for('main.index') }}">Naar het overzicht</a>
+    <a class="btn btn-outline" href="{{ url_for('main.manual') }}">Handleiding</a>
+  </div>
+</div>
+{% endblock %}

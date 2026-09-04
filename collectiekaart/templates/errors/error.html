@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Fout {{ code }} — Collectiekaart{% endblock %}
+{% block content %}
+<div class="panel">
+  <h2>Er kon niets verwerkt worden</h2>
+  <p class="intro">{{ message }}</p>
+  <div class="form-actions">
+    <a class="btn btn-accent" href="{{ url_for('main.index') }}">Naar het overzicht</a>
+  </div>
+</div>
+{% endblock %}

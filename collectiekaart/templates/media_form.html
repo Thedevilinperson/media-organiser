@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Item wijzigen' if media else 'Item toevoegen' }} — Collectiekaart{% endblock %}
+{% macro val(field, default='') -%}
+{{ media[field] if media and media[field] is not none else prefill.get(field, default) }}
+{%- endmacro %}
+{% block content %}
+
+<div class="panel">
+  <h2>{{ 'Item wijzigen' if media else 'Item toevoegen' }}</h2>
+  <p class="muted intro">
+    Enkel de titel en het type zijn verplicht. Welke extra velden verschijnen, hangt af van het
+    gekozen type; dat stel je in bij <a href="{{ url_for('settings.index') }}">Instellingen</a>.
+  </p>
+
+  <form method="post" enctype="multipart/form-data" id="media-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="cover_image" value="{{ prefill.get('cover_image', '') }}">
+
+    <fieldset>
+      <legend>Algemeen</legend>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="media_type">Type</label>
+          <select name="media_type" id="media_type" required>
+            {% for t in media_types %}
+              <option value="{{ t.code }}" data-profile="{{ t.field_profile }}" data-id="{{ t.id }}"
+                {% if (media and media.media_type and media.media_type.code == t.code) or prefill.get('media_type') == t.code %}selected{% endif %}>
+                {{ t.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="owner_id">Eigenaar</label>
+          <select name="owner_id" id="owner_id">
+            <option value="">—</option>
+            {% for o in owners %}
+              <option value="{{ o.id }}" {% if media and media.owner_id == o.id %}selected{% endif %}>{{ o.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field wide">
+          <label for="title">Titel</label>
+          <input type="text" name="title" id="title" required value="{{ val('title') }}">
+        </div>
+
+        <div class="form-field" data-profiles="strip,boek,vrij">
+          <label for="author">Auteur of tekenaar</label>
+          <input type="text" name="author" id="author" value="{{ val('author') }}">
+        </div>
+
+        <div class="form-field" data-profiles="cd">
+          <label for="musician">Muzikant</label>
+          <input type="text" name="musician" id="musician" value="{{ val('musician') }}">
+        </div>
+
+        <div class="form-field" data-profiles="strip,boek">
+          <label for="series">Reeks</label>
+          <input type="text" name="series" id="series" value="{{ val('series') }}">
+        </div>
+
+        <div class="form-field" data-profiles="strip,boek">
+          <label for="series_number">Nummer in de reeks</label>
+          <input type="number" step="0.5" min="0" name="series_number" id="series_number"
+                 value="{{ media.series_number | reeksnummer if media and media.series_number is not none else prefill.get('series_number', '') }}">
+        </div>
+
+        <div class="form-field">
+          <label for="barcode">Barcode (ISBN of EAN)</label>
+          <input type="text" name="barcode" id="barcode" class="mono" value="{{ val('barcode') }}">
+        </div>
+
+        <div class="form-field">
+          <label for="cover_image_file">Kaftfoto</label>
+          <input type="file" name="cover_image_file" id="cover_image_file" accept="image/*">
+          {% if media and media.cover_image %}
+            <p class="hint">Er staat al een foto. Kies een nieuwe om ze te vervangen.</p>
+          {% elif prefill.get('cover_image') %}
+            <p class="hint">De foto uit de analyse wordt bewaard.</p>
+          {% endif %}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset data-profiles="strip">
+      <legend>Strip, comic, manga en anime</legend>
+      <div class="form-grid">
+        <div class="form-field"><label for="collection">Collectie</label>
+          <input type="text" name="collection" id="collection" value="{{ val('collection') }}"></div>
+        <div class="form-field"><label for="collection_number">Nummer in de collectie</label>
+          <input type="number" min="0" name="collection_number" id="collection_number" value="{{ media.collection_number if media and media.collection_number is not none else '' }}"></div>
+        <div class="form-field">
+          <label for="condition">Staat</label>
+          <select name="condition" id="condition">
+            <option value="">—</option>
+            {% for c in conditions %}
+              <option value="{{ c }}" {% if media and media.condition == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-field checkbox">
+          <input type="checkbox" name="is_duplicate" id="is_duplicate" {% if media and media.is_duplicate %}checked{% endif %}>
+          <label for="is_duplicate">Ik heb dit dubbel</label>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset data-profiles="strip,boek">
+      <legend>Uitvoering</legend>
+      <div class="form-grid">
+        <div class="form-field"><label for="print_number">Nummer van de druk</label>
+          <input type="number" min="0" name="print_number" id="print_number" value="{{ media.print_number if media and media.print_number is not none else '' }}"></div>
+        <div class="form-field checkbox">
+          <input type="checkbox" name="is_hardcover" id="is_hardcover" {% if media and media.is_hardcover %}checked{% endif %}>
+          <label for="is_hardcover">Hardcover</label>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset data-profiles="cd,dvd">
+      <legend>Uitgave</legend>
+      <div class="form-grid">
+        <div class="form-field"><label for="year">Jaar</label>
+          <input type="number" min="0" max="2200" name="year" id="year" value="{{ media.year if media and media.year is not none else prefill.get('year','') }}"></div>
+        <div class="form-field" data-profiles="dvd"><label for="audio_language">Taal audio</label>
+          <input type="text" name="audio_language" id="audio_language" value="{{ val('audio_language') }}"></div>
+        <div class="form-field" data-profiles="dvd"><label for="subtitle_language">Taal ondertiteling</label>
+          <input type="text" name="subtitle_language" id="subtitle_language" value="{{ val('subtitle_language') }}"></div>
+      </div>
+    </fieldset>
+
+    {% if custom_fields %}
+    <fieldset>
+      <legend>Eigen velden</legend>
+      <div class="form-grid">
+        {% for f in custom_fields %}
+          <div class="form-field {{ 'checkbox' if f.field_type == 'checkbox' }}"
+               data-custom-type="{{ f.media_type_id or '' }}">
+            {% set current = (media.custom_fields or {}).get(f.key) if media else None %}
+            {% if f.field_type == 'checkbox' %}
+              <input type="checkbox" name="cf_{{ f.key }}" id="cf_{{ f.key }}" {% if current %}checked{% endif %}>
+              <label for="cf_{{ f.key }}">{{ f.label }}</label>
+            {% else %}
+              <label for="cf_{{ f.key }}">{{ f.label }}</label>
+              <input type="{{ 'number' if f.field_type == 'number' else 'text' }}"
+                     name="cf_{{ f.key }}" id="cf_{{ f.key }}" value="{{ current if current is not none else '' }}">
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endif %}
+
+    <fieldset>
+      <legend>Waarde en commentaar</legend>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="estimated_value">Geschatte waarde in euro</label>
+          <input type="text" inputmode="decimal" name="estimated_value" id="estimated_value"
+                 value="{{ media.estimated_value if media and media.estimated_value is not none else '' }}">
+          {% if media and media.value_source == 'lastdodo' %}<p class="hint">Richtprijs opgehaald via Lastdodo.</p>{% endif %}
+        </div>
+        <div class="form-field wide">
+          <label for="comment">Commentaar</label>
+          <textarea name="comment" id="comment" rows="3">{{ media.comment if media and media.comment else '' }}</textarea>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-accent">{{ 'Wijzigingen opslaan' if media else 'Item toevoegen' }}</button>
+      <a href="{{ url_for('main.index') }}" class="btn btn-outline">Annuleren</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/media_form.js') }}"></script>
+{% endblock %}

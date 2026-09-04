@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Instellingen — Collectiekaart{% endblock %}
+{% block content %}
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Eigenaars</h2>
+    <ul class="tag-list">
+      {% for o in owners %}
+        <li class="tag">{{ o.name }}
+          <form method="post" action="{{ url_for('settings.owner_delete', owner_id=o.id) }}"
+                data-confirm="Eigenaar '{{ o.name }}' verwijderen?">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" aria-label="{{ o.name }} verwijderen">×</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{{ url_for('settings.owner_add') }}" class="search-row">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="text" name="name" placeholder="Naam" aria-label="Naam nieuwe eigenaar" required>
+      <button type="submit">Toevoegen</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Types media</h2>
+    <ul class="tag-list">
+      {% for t in media_types %}
+        <li class="tag">{{ t.label }} <span class="muted">{{ t.field_profile }}</span>
+          <form method="post" action="{{ url_for('settings.mediatype_delete', type_id=t.id) }}"
+                data-confirm="Type '{{ t.label }}' verwijderen?">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" aria-label="{{ t.label }} verwijderen">×</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{{ url_for('settings.mediatype_add') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="form-grid">
+        <div class="form-field"><label for="t-code">Interne code</label>
+          <input type="text" name="code" id="t-code" placeholder="bordspel" required></div>
+        <div class="form-field"><label for="t-label">Naam op het scherm</label>
+          <input type="text" name="label" id="t-label" placeholder="Bordspel" required></div>
+        <div class="form-field">
+          <label for="t-profile">Welke velden?</label>
+          <select name="field_profile" id="t-profile">
+            {% for code, omschrijving in field_profiles.items() %}
+              <option value="{{ code }}">{{ omschrijving }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-actions"><button type="submit">Type toevoegen</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Eigen velden</h2>
+  <p class="muted">
+    Mist er een veld? Voeg het hier toe. Het verschijnt dan op het formulier, ofwel bij elk type,
+    ofwel enkel bij het type dat je kiest.
+  </p>
+  <ul class="tag-list">
+    {% for f in custom_fields %}
+      <li class="tag">{{ f.label }}
+        <span class="muted">{{ f.field_type }}{% if f.media_type %} · {{ f.media_type.label }}{% endif %}</span>
+        <form method="post" action="{{ url_for('settings.field_delete', field_id=f.id) }}"
+              data-confirm="Veld '{{ f.label }}' verwijderen?">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button type="submit" aria-label="{{ f.label }} verwijderen">×</button>
+        </form>
+      </li>
+    {% else %}
+      <li class="muted">Nog geen eigen velden.</li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="{{ url_for('settings.field_add') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="form-field"><label for="f-label">Naam op het scherm</label>
+        <input type="text" name="label" id="f-label" placeholder="Uitgeverij" required></div>
+      <div class="form-field"><label for="f-key">Interne naam</label>
+        <input type="text" name="key" id="f-key" placeholder="uitgeverij" required></div>
+      <div class="form-field">
+        <label for="f-type">Soort veld</label>
+        <select name="field_type" id="f-type">
+          <option value="text">tekst</option>
+          <option value="number">getal</option>
+          <option value="checkbox">aankruisvakje</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="f-mediatype">Voor welk type?</label>
+        <select name="media_type_id" id="f-mediatype">
+          <option value="">alle types</option>
+          {% for t in media_types %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-actions"><button type="submit">Veld toevoegen</button></div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Koppelingen</h2>
+  <form method="post" action="{{ url_for('settings.save') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="ai_api_key">AI-sleutel voor foto-herkenning</label>
+        <input type="password" name="ai_api_key" id="ai_api_key" autocomplete="new-password"
+               placeholder="{{ 'ingevuld — laat leeg om te behouden' if has_ai_key else 'optioneel' }}">
+        {% if has_ai_key %}
+          <p class="hint"><label><input type="checkbox" name="clear_ai_key"> sleutel wissen</label></p>
+        {% endif %}
+      </div>
+      <div class="form-field">
+        <label for="ai_endpoint">Eigen AI-adres</label>
+        <input type="text" name="ai_endpoint" id="ai_endpoint" value="{{ ai_endpoint }}"
+               placeholder="http://192.168.0.20:8080/v1/messages">
+        <p class="hint">Leeg laten voor de Anthropic-API. Draai je zelf een model, vul dan dat adres in.</p>
+      </div>
+      <div class="form-field">
+        <label for="ha_url">Adres van Home Assistant</label>
+        <input type="text" name="ha_url" id="ha_url" value="{{ ha_url }}" placeholder="http://homeassistant.local:8123">
+      </div>
+      <div class="form-field">
+        <label for="ha_token">Home Assistant-token</label>
+        <input type="password" name="ha_token" id="ha_token" autocomplete="new-password"
+               placeholder="{{ 'ingevuld — laat leeg om te behouden' if has_ha_token else 'Long-Lived Access Token' }}">
+        {% if has_ha_token %}
+          <p class="hint"><label><input type="checkbox" name="clear_ha_token"> token wissen</label></p>
+        {% endif %}
+      </div>
+    </div>
+    <p class="muted">
+      Zonder AI-sleutel gebruikt de foto-ingave lokale tekstherkenning: geen internet, geen
+      externe partij. Sleutel en token worden opgeslagen in de databank op je eigen toestel en
+      worden nooit teruggestuurd naar deze pagina.
+    </p>
+    <div class="form-actions">
+      <button type="submit" class="btn-accent">Instellingen opslaan</button>
+      <button type="button" class="btn btn-outline" id="ha-test-btn"
+              data-url="{{ url_for('settings.ha_test') }}">Verbinding testen</button>
+      <span id="ha-test-result" class="muted" aria-live="polite"></span>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Massa-import uit Excel</h2>
+  <p class="muted">
+    Upload een .xlsx-bestand. Deze kolomnamen worden herkend, in het Nederlands of het Engels:
+    type, titel, reeks, nummer in de reeks, auteur, collectie, nummer in de collectie,
+    nummer van de druk, eigenaar, dubbel, hardcover, staat, commentaar, muzikant, jaar,
+    taal audio, taal ondertiteling, barcode, waarde. De kolom "type" bevat de interne code van
+    een bestaand type, bijvoorbeeld <code>strip</code> of <code>boek</code>.
+  </p>
+  <form method="post" action="{{ url_for('settings.do_import') }}" enctype="multipart/form-data" class="search-row">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="file" name="import_file" accept=".xlsx" aria-label="Excel-bestand" required>
+    <button type="submit" class="btn-accent">Importeren</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

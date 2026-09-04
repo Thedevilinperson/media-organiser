@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Foto analyseren — Collectiekaart{% endblock %}
+{% block content %}
+<div class="panel">
+  <h2>Foto van de kaft analyseren</h2>
+  <p class="muted intro">
+    Zonder AI-sleutel leest de app de tekst op de kaft met lokale tekstherkenning. Dat gebeurt
+    volledig op je eigen toestel en geeft een ruwe gok, meestal de titel. Vul je bij
+    <a href="{{ url_for('settings.index') }}">Instellingen</a> een AI-sleutel in, dan herkent een
+    beeldmodel ook reeks, nummer en auteur. Dat model mag ook een LLM zijn die je zelf thuis
+    draait: zie de <a href="{{ url_for('main.manual') }}#foto">handleiding</a>.
+  </p>
+
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="form-field">
+      <label for="photo">Foto van de kaft</label>
+      <input type="file" name="photo" id="photo" accept="image/*" capture="environment" required>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-accent">Foto analyseren</button>
+    </div>
+  </form>
+
+  {% if result %}
+    <h3>Resultaat — {{ 'beeldmodel' if method == 'ai' else 'lokale tekstherkenning' }}</h3>
+    {% if not result.ok %}
+      <div class="flash error">{{ result.error }}</div>
+    {% elif fields|length <= 1 %}
+      <p class="muted">Er is niets herkend. Ga verder en vul de velden zelf in.</p>
+    {% else %}
+      <ul>
+        {% for key, value in fields.items() if key != 'cover_image' %}
+          <li><strong>{{ key }}</strong>: {{ value }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <div class="form-actions">
+      <a class="btn btn-accent" href="{{ url_for('media.add', **fields) }}">Verder naar het formulier</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

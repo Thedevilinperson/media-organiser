@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Reeksen — Collectiekaart{% endblock %}
+{% block content %}
+<div class="panel">
+  <h2>Gaten in je reeksen</h2>
+  <p class="muted intro">
+    De ontbrekende nummers hieronder worden lokaal berekend tussen het laagste en het hoogste
+    nummer dat je bezit. Daarvoor is geen internet nodig. Met de knop rechts kijkt de app op de
+    website van De Poort of er nummers bestaan die je nog niet hebt.
+  </p>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Reeks</th><th>In bezit</th><th>Ontbreekt</th><th>Hoogste</th><th>Nieuwer materiaal</th></tr>
+      </thead>
+      <tbody>
+        {% for row in analysis %}
+        <tr>
+          <td data-label="Reeks"><strong>{{ row.series }}</strong></td>
+          <td data-label="In bezit" class="mono">{{ row.owned | join(', ') }}</td>
+          <td data-label="Ontbreekt">
+            {% if row.missing %}
+              <span class="overdue mono">{{ row.missing | join(', ') }}</span>
+            {% else %}
+              <span class="ok-text">volledig</span>
+            {% endif %}
+          </td>
+          <td data-label="Hoogste" class="mono">{{ row.highest_owned }}</td>
+          <td data-label="Nieuwer">
+            <button class="btn btn-outline btn-small check-new-btn"
+                    data-series="{{ row.series }}"
+                    data-owned="{{ row.owned | join(',') }}"
+                    data-target="check-{{ loop.index }}">Kijk bij De Poort</button>
+            <div id="check-{{ loop.index }}" class="muted" aria-live="polite"></div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">
+          Nog geen reeksen met een nummer. Vul bij een strip of boek een reeks en een nummer in,
+          dan verschijnt de analyse hier.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="muted" style="margin-top:14px;">
+    De controle bij De Poort leest hun zoekpagina uit en haalt daar de albumnummers uit. Er komt
+    geen AI aan te pas. Wijzigt de opbouw van hun website, dan vindt de app tijdelijk niets meer
+    en moet <code>services/series_analysis.py</code> bijgewerkt worden.
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/series.js') }}"
+        data-url="{{ url_for('analysis.series_check_new') }}"></script>
+{% endblock %}

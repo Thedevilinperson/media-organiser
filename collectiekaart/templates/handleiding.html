@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Handleiding — Collectiekaart{% endblock %}
+{% block content %}
+<div class="panel manual">
+  <h2>Handleiding</h2>
+  <p class="muted">Versie {{ app_version }}. Alles hieronder werkt zowel op je pc als op je telefoon.</p>
+
+  <ul class="manual-toc">
+    <li><a href="#overzicht">Het overzicht</a></li>
+    <li><a href="#toevoegen">Items toevoegen</a></li>
+    <li><a href="#scannen">Barcode scannen</a></li>
+    <li><a href="#foto">Foto van de kaft</a></li>
+    <li><a href="#reeksen">Reeksen aanvullen</a></li>
+    <li><a href="#waarde">Waarde van de collectie</a></li>
+    <li><a href="#uitleen">Uitleen</a></li>
+    <li><a href="#instellingen">Instellingen</a></li>
+    <li><a href="#import">Massa-import</a></li>
+    <li><a href="#problemen">Als er iets misloopt</a></li>
+  </ul>
+
+  <h3 id="overzicht">Het overzicht</h3>
+  <p>
+    Bovenaan zie je hoeveel items je per type hebt. Daaronder staat een zoekbalk die in alle
+    kolommen tegelijk zoekt: titel, reeks, auteur, commentaar, barcode, taal en eigenaar.
+  </p>
+  <p>
+    De vier keuzelijsten eronder werken samen. Kies je bijvoorbeeld eigenaar "Jan", dan tonen de
+    lijsten voor reeks en titel alleen nog wat Jan bezit. Zo kan je nooit een combinatie kiezen
+    die geen resultaat oplevert. Met "Filters wissen" begin je opnieuw.
+  </p>
+  <p>
+    Strips, comics, manga en anime staan alfabetisch op reeks en daarbinnen op nummer. Alle
+    andere types staan op titel. Op een smartphone wordt de tabel automatisch een kaartenlijst.
+  </p>
+
+  <h3 id="toevoegen">Items toevoegen</h3>
+  <p>
+    Kies eerst het type. Het formulier past zich daaraan aan: bij een strip verschijnen collectie,
+    druk en staat, bij een cd de muzikant en het jaar, bij een dvd de audiotaal en de
+    ondertiteling. Alleen titel en type zijn verplicht, de rest mag je later aanvullen.
+  </p>
+  <p>
+    Voor een special die tussen twee nummers valt, mag je een half nummer invullen, bijvoorbeeld
+    <code>3.5</code>. De reeksanalyse rekent zo'n special niet mee als ontbrekend nummer.
+  </p>
+
+  <h3 id="scannen">Barcode scannen</h3>
+  <p>
+    Open <a href="{{ url_for('media.scan') }}">Scannen</a> op je telefoon en richt de camera op de
+    streepjescode. De titel, auteur en het jaar worden opgezocht bij Open Library en Google Books.
+    Beide zijn gratis en vragen geen sleutel.
+  </p>
+  <p>
+    Boeken hebben bijna altijd een ISBN en worden dus meestal gevonden. Bij strips en manga zet
+    niet elke uitgever een ISBN op de kaft; dan vul je de velden zelf aan.
+  </p>
+  <p>
+    De camera werkt alleen op een beveiligde verbinding of op <code>localhost</code>. Draait de
+    app standalone op je pc en open je ze via het IP-adres, dan weigert je telefoon de camera.
+    Binnen Home Assistant is dat geen probleem, want dat loopt over https.
+  </p>
+
+  <h3 id="foto">Foto van de kaft</h3>
+  <p>
+    Zonder AI-sleutel leest de app de tekst op de kaft met lokale tekstherkenning. Dat gebeurt op
+    je eigen toestel, zonder internet. Het resultaat is een gok: meestal de titel, soms een
+    nummer. Je corrigeert het daarna zelf.
+  </p>
+  <p>
+    Een kaft volledig automatisch herkennen, dus titel én reeks én nummer tegelijk, lukt niet
+    betrouwbaar zonder beeldmodel. Vandaar de optionele sleutel bij Instellingen. Wil je geen
+    foto's naar een externe partij sturen, vul dan bij "Eigen AI-adres" het adres in van een LLM
+    die je zelf draait, bijvoorbeeld <code>http://192.168.0.20:8080/v1/messages</code>. Er verlaat
+    dan niets je eigen netwerk.
+  </p>
+  <p>
+    Voor de lokale tekstherkenning op Windows moet Tesseract OCR geïnstalleerd zijn en in het
+    PATH staan. In Home Assistant zit het al in de add-on.
+  </p>
+
+  <h3 id="reeksen">Reeksen aanvullen</h3>
+  <p>
+    Onder <a href="{{ url_for('analysis.series') }}">Reeksen</a> zie je per reeks welke nummers
+    ontbreken tussen je laagste en je hoogste nummer. Dat rekent de app zelf uit, zonder internet.
+  </p>
+  <p>
+    Met "Kijk bij De Poort" zoekt de app op hun website naar albums van die reeks en vergelijkt
+    de nummers met wat jij hebt. Zo zie je ook nummers die na jouw hoogste verschenen zijn.
+    Dit leest gewoon hun zoekpagina uit; er komt geen AI aan te pas. Wijzigt hun website, dan
+    vindt de app tijdelijk niets. Dat is verwacht gedrag en breekt de rest niet.
+  </p>
+
+  <h3 id="waarde">Waarde van de collectie</h3>
+  <p>
+    Je kan bij elk item zelf een waarde invullen. Onder
+    <a href="{{ url_for('analysis.value') }}">Waarde</a> staat het totaal per type, plus een ruwe
+    schatting die het gemiddelde doortrekt naar de items zonder waarde.
+  </p>
+  <p>
+    Met "Zoek richtprijs" haalt de app een indicatie op bij Lastdodo. Dat is een richtprijs uit
+    zoekresultaten, geen taxatie: gebruik het als eerste inschatting en corrigeer waar je zelf
+    beter weet.
+  </p>
+
+  <h3 id="uitleen">Uitleen</h3>
+  <p>
+    Registreer wie iets meeneemt en vanaf welke datum. Uitgeleende items verdwijnen uit de
+    keuzelijst zolang ze weg zijn, en op het overzicht zie je bij wie ze liggen.
+  </p>
+  <p>
+    Na dertig dagen krijgt de uitlening een markering. Is de koppeling met Home Assistant
+    ingevuld, dan komt er automatisch een melding binnen. Die controle loopt één keer per dag.
+    Met de knop "Herinner" stuur je meteen een melding.
+  </p>
+
+  <h3 id="instellingen">Instellingen</h3>
+  <p>
+    Hier beheer je de eigenaars en de types media. Een type dat nog items bevat, kan je niet
+    verwijderen; dat voorkomt dat je per ongeluk je collectie ontkoppelt.
+  </p>
+  <p>
+    Mist er een veld, dan voeg je het toe onder "Eigen velden". Kies een naam voor op het scherm,
+    een interne naam in kleine letters, en of het een tekst, een getal of een aankruisvakje is.
+    Je kan het veld beperken tot één type media. Verwijder je later dat veld, dan blijven de
+    ingevulde waarden bewaard.
+  </p>
+  <p>
+    Het Home Assistant-token maak je aan in Home Assistant onder je profiel, helemaal onderaan bij
+    "Long-Lived Access Tokens". Met "Verbinding testen" controleer je meteen of het klopt.
+  </p>
+
+  <h3 id="import">Massa-import</h3>
+  <p>
+    Heb je al een lijst in Excel, dan importeer je die in één keer. De eerste rij bevat de
+    kolomnamen. Hoofdletters maken niet uit, en kolommen die de app niet kent, worden genegeerd.
+    De kolom <code>type</code> moet de interne code van een bestaand type bevatten, bijvoorbeeld
+    <code>strip</code>. Rijen met een onbekend type worden overgeslagen en na afloop opgesomd.
+  </p>
+  <p>
+    Eigenaars die nog niet bestaan, worden tijdens de import automatisch aangemaakt.
+  </p>
+
+  <h3 id="problemen">Als er iets misloopt</h3>
+  <p>
+    <strong>De pagina heeft geen opmaak en de links geven een foutmelding.</strong> Dat gebeurde in
+    oudere versies binnen Home Assistant, omdat de app niet doorhad dat ze achter een subpad
+    draait. Vanaf versie 0.1 leest de app de header <code>X-Ingress-Path</code> uit en bouwt ze
+    haar links daarmee op. Zie je het toch nog, herstart dan de add-on en leeg de cache van je
+    browser.
+  </p>
+  <p>
+    <strong>"Ongeldig of ontbrekend CSRF-token".</strong> Je formulier stond te lang open. Herlaad
+    de pagina en verstuur opnieuw.
+  </p>
+  <p>
+    <strong>De camera start niet.</strong> Je browser geeft alleen toegang tot de camera over
+    https of op localhost. Gebruik de app via Home Assistant, of typ de barcode zelf in.
+  </p>
+  <p>
+    <strong>De foto-analyse zegt dat tekstherkenning niet beschikbaar is.</strong> Installeer
+    Tesseract OCR, of vul een AI-sleutel in bij Instellingen.
+  </p>
+  <p>
+    <strong>Waar staan mijn gegevens?</strong> In één databankbestand,
+    <code>collectiekaart.db</code>, samen met de kaftfoto's. Standalone staat dat naast het
+    programma in de map <code>data</code>; in Home Assistant in <code>/data</code>, dat een
+    herstart en een update overleeft. Een back-up maak je door die map te kopiëren.
+  </p>
+</div>
+{% endblock %}

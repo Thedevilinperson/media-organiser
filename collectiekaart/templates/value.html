@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Waarde — Collectiekaart{% endblock %}
+{% block content %}
+<div class="panel">
+  <h2>Waarde per type</h2>
+  <p class="muted intro">
+    De kolom "bekende waarde" telt op wat je zelf invulde of wat via Lastdodo werd opgehaald.
+    De schatting daarnaast trekt dat gemiddelde door naar de items zonder waarde, zodat je een
+    ruw beeld van het geheel krijgt. Het blijft een indicatie en geen taxatie.
+  </p>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Type</th><th>Items</th><th>Waarde ingevuld</th><th>Bekende waarde</th><th>Schatting geheel</th></tr>
+      </thead>
+      <tbody>
+        {% for label, row in per_type.items() %}
+        <tr>
+          <td data-label="Type"><span class="type-badge">{{ label }}</span></td>
+          <td data-label="Items" class="mono">{{ row.count }}</td>
+          <td data-label="Ingevuld" class="mono">{{ row.known_count }} / {{ row.count }}</td>
+          <td data-label="Bekende waarde" class="mono">{{ row.value | euro }}</td>
+          <td data-label="Schatting" class="mono">{{ row.extrapolated | euro }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">Nog geen items in de collectie.</td></tr>
+        {% endfor %}
+      </tbody>
+      {% if per_type %}
+      <tfoot>
+        <tr>
+          <td colspan="3" data-label=""><strong>Totaal</strong></td>
+          <td data-label="Bekende waarde" class="mono"><strong>{{ total | euro }}</strong></td>
+          <td data-label="Schatting" class="mono"><strong>{{ total_extrapolated | euro }}</strong></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Items zonder waarde</h2>
+  {% if without_value %}
+    <p class="muted">Klik op "Zoek richtprijs" om Lastdodo te raadplegen, of vul de waarde zelf in bij het item.</p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Titel</th><th>Reeks</th><th>Type</th><th>Waarde</th><th></th></tr></thead>
+        <tbody>
+          {% for m in without_value %}
+          <tr>
+            <td data-label="Titel">{{ m.title }}</td>
+            <td data-label="Reeks">{{ m.series or '—' }}</td>
+            <td data-label="Type"><span class="type-badge">{{ m.media_type.label if m.media_type else '—' }}</span></td>
+            <td data-label="Waarde" class="mono" id="value-{{ m.id }}">—</td>
+            <td data-label="">
+              <button class="btn btn-outline btn-small estimate-btn"
+                      data-id="{{ m.id }}" data-target="value-{{ m.id }}">Zoek richtprijs</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty">Elk item heeft een waarde.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/value.js') }}"
+        data-url="{{ url_for('analysis.value_estimate', media_id=0) }}"></script>
+{% endblock %}
