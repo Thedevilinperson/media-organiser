@@ -4,9 +4,10 @@
 <div class="panel">
   <h2>Barcode scannen</h2>
   <p class="muted intro">
-    Richt de camera van je telefoon op de streepjescode. De titel, auteur en het jaar worden
-    automatisch opgezocht bij Open Library en Google Books; de rest vul je aan op het formulier.
-    Boeken hebben bijna altijd een ISBN, strips en manga niet altijd.
+    Richt de camera van je telefoon op de streepjescode en hou even stil: de app leest de code
+    twee keer om zeker te zijn. Titel, auteur en jaar worden opgezocht bij Open Library en Google
+    Books, de rest vul je aan op het formulier. Boeken hebben bijna altijd een ISBN, strips en
+    manga niet altijd. Lukt scannen niet, typ dan de cijfers onder de barcode in.
   </p>
 
   <div id="reader"></div>
@@ -14,10 +15,15 @@
   <div class="form-actions">
     <button id="start-btn" class="btn-accent" type="button">Camera starten</button>
     <button id="stop-btn" class="btn btn-outline" type="button" hidden>Camera stoppen</button>
-    <a class="btn btn-outline" href="{{ url_for('media.add') }}">Barcode zelf intypen</a>
   </div>
 
   <p id="scan-status" class="muted" aria-live="polite"></p>
+
+  <form id="manual-form" class="search-row" style="margin-top:6px;">
+    <input type="text" id="manual-code" class="mono" inputmode="numeric"
+           aria-label="Barcode zelf intypen" placeholder="Of typ de 13 cijfers onder de barcode">
+    <button type="submit" class="btn btn-outline">Opzoeken</button>
+  </form>
 
   <div id="scan-result" hidden>
     <h3>Gevonden</h3>

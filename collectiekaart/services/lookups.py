@@ -51,19 +51,30 @@ def _filter_fields(raw):
 # ---------------------------------------------------------------------------
 # 1. Barcode (geen AI nodig)
 # ---------------------------------------------------------------------------
-def lookup_barcode(code):
+def ean_checksum_ok(code):
     """
-    Zoekt een ISBN/EAN op via gratis bronnen zonder sleutel. Werkt goed voor
-    boeken; voor strips en manga is de dekking wisselend omdat niet elke
-    uitgever een ISBN op de kaft zet. Ontbrekende velden vul je nadien
-    manueel aan.
+    Controleert het controlecijfer van een EAN-13 of UPC-A.
+
+    EAN-8 wordt bewust geweigerd: dat formaat komt niet voor op boeken of
+    strips, en een half gelezen EAN-13 ziet er soms uit als een geldige EAN-8.
     """
-    code = re.sub(r"[^0-9Xx]", "", code or "")[:20]
-    if not code:
-        return {}
+    if not code.isdigit():
+        return False
+    if len(code) == 12:
+        # Een UPC-A begint nooit met 97; zo'n code is een ISBN waarvan er een
+        # cijfer wegviel bij het scannen.
+        if code.startswith("97"):
+            return False
+        code = "0" + code
+    if len(code) != 13:
+        return False
+    digits = [int(c) for c in code]
+    check = digits.pop()
+    total = sum(d * (3 if i % 2 == 0 else 1) for i, d in enumerate(reversed(digits)))
+    return (10 - total % 10) % 10 == check
 
-    result = {}
 
+def _from_open_library(code):
     try:
         resp = requests.get(
             "https://openlibrary.org/api/books",
@@ -71,35 +82,67 @@ def lookup_barcode(code):
             timeout=TIMEOUT,
         )
         book = (resp.json() or {}).get(f"ISBN:{code}")
-        if book:
-            result["title"] = book.get("title", "")
-            authors = book.get("authors") or []
-            if authors:
-                result["author"] = ", ".join(a.get("name", "") for a in authors)
-            year = re.search(r"(\d{4})", book.get("publish_date", "") or "")
-            if year:
-                result["year"] = year.group(1)
     except Exception:
-        pass
+        return {}
+    if not book:
+        return {}
 
-    if not result:
-        try:
-            resp = requests.get(
-                "https://www.googleapis.com/books/v1/volumes",
-                params={"q": f"isbn:{code}"},
-                timeout=TIMEOUT,
-            )
-            items = (resp.json() or {}).get("items") or []
-            if items:
-                info = items[0].get("volumeInfo", {})
-                result["title"] = info.get("title", "")
-                if info.get("authors"):
-                    result["author"] = ", ".join(info["authors"])
-                year = re.search(r"(\d{4})", info.get("publishedDate", "") or "")
-                if year:
-                    result["year"] = year.group(1)
-        except Exception:
-            pass
+    found = {"title": book.get("title", "")}
+    authors = book.get("authors") or []
+    if authors:
+        found["author"] = ", ".join(a.get("name", "") for a in authors)
+    year = re.search(r"(\d{4})", book.get("publish_date", "") or "")
+    if year:
+        found["year"] = year.group(1)
+    return found
+
+
+def _from_google_books(code):
+    try:
+        resp = requests.get(
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": f"isbn:{code}"},
+            timeout=TIMEOUT,
+        )
+        items = (resp.json() or {}).get("items") or []
+    except Exception:
+        return {}
+    if not items:
+        return {}
+
+    info = items[0].get("volumeInfo", {})
+    title = info.get("title", "")
+    if info.get("subtitle"):
+        title = f"{title}: {info['subtitle']}"
+    found = {"title": title}
+    if info.get("authors"):
+        found["author"] = ", ".join(info["authors"])
+    year = re.search(r"(\d{4})", info.get("publishedDate", "") or "")
+    if year:
+        found["year"] = year.group(1)
+    return found
+
+
+def lookup_barcode(code):
+    """
+    Zoekt een ISBN of EAN op via gratis bronnen zonder sleutel. Beide bronnen
+    worden geraadpleegd en vullen elkaar aan: Google Books heeft de betere
+    dekking voor Nederlandstalige uitgaven, Open Library voor Engelstalig werk.
+
+    Bij strips en manga zet niet elke uitgever een ISBN op de kaft; dan komt
+    er niets terug en vul je de velden zelf aan.
+    """
+    code = re.sub(r"[^0-9Xx]", "", code or "")[:20]
+    if not code:
+        return {}
+
+    result = {}
+    for source in (_from_google_books, _from_open_library):
+        for key, value in source(code).items():
+            if value and not result.get(key):
+                result[key] = value
+        if result.get("title") and result.get("author"):
+            break
 
     result = _filter_fields(result)
     result["barcode"] = code

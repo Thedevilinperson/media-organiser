@@ -55,9 +55,21 @@
     niet elke uitgever een ISBN op de kaft; dan vul je de velden zelf aan.
   </p>
   <p>
-    De camera werkt alleen op een beveiligde verbinding of op <code>localhost</code>. Draait de
-    app standalone op je pc en open je ze via het IP-adres, dan weigert je telefoon de camera.
-    Binnen Home Assistant is dat geen probleem, want dat loopt over https.
+    Hou de camera even stil. De app aanvaardt een code pas als ze twee keer hetzelfde leest en
+    het controlecijfer klopt. Dat voorkomt dat er een half gelezen code binnensluipt.
+  </p>
+  <p>
+    Start de camera niet, dan is er meestal één van deze drie dingen aan de hand.
+    Ten eerste: je browser geeft alleen toegang tot de camera over https of op
+    <code>localhost</code>. Bereik je Home Assistant via <code>http://…:8123</code>, dan lukt
+    scannen niet. Ten tweede: binnen het kader waarin Home Assistant een add-on toont, geeft niet
+    elke browser toegang tot de camera. Open Collectiekaart dan in een eigen tabblad via het
+    menu van de add-on. Ten derde: je hebt de camera ooit geweigerd voor deze pagina; dat zet je
+    terug bij de site-instellingen van je browser.
+  </p>
+  <p>
+    Lukt het niet, typ dan de dertien cijfers onder de barcode in het invoerveld op de scanpagina.
+    Dat levert exact hetzelfde resultaat op.
   </p>
 
   <h3 id="foto">Foto van de kaft</h3>
