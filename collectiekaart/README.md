@@ -23,8 +23,10 @@ Assistant, en is bruikbaar op een smartphone.
   tot richtprijs via LastDodo.
 - **Uitleen**: wie leende wat en sinds wanneer, met een melding in Home Assistant
   na dertig dagen.
-- **Instellingen**: eigenaars, types media, eigen velden, AI-sleutel, de
-  koppeling met Home Assistant en massa-import uit Excel.
+- **Instellingen**: eigenaars, types media, eigen velden, en per mediatype welke
+  velden op het formulier verschijnen en welke verplicht zijn. Verder de
+  AI-sleutel, de koppeling met Home Assistant en de massa-import uit Excel, met
+  een voorbeeldbestand om te downloaden.
 - **Handleiding** in de applicatie zelf, onder "Handleiding" in het menu.
 
 ## Twee vereisten die uitleg verdienen
@@ -107,7 +109,9 @@ Ga naar **Instellingen → Massa-import**. Herkende kolomnamen, in het Nederland
 of het Engels en hoofdletterongevoelig: `type, titel, reeks, nummer in de reeks,
 auteur, collectie, nummer in de collectie, nummer van de druk, eigenaar, dubbel,
 hardcover, staat, commentaar, muzikant, jaar, taal audio, taal ondertiteling,
-barcode, waarde`. In `voorbeeld_import.xlsx` staat een ingevuld voorbeeld.
+barcode, waarde`. Met de knop "Voorbeeldbestand downloaden" haal je een ingevuld
+voorbeeld op; dat wordt bij het downloaden opgebouwd uit dezelfde kolomtabel als
+de importer gebruikt, zodat het nooit uit de pas loopt.
 
 De kolom `type` bevat de interne code van een bestaand type, bijvoorbeeld `strip`
 of `boek`. Rijen met een onbekend type worden overgeslagen en na afloop opgesomd.
@@ -138,6 +142,7 @@ collectiekaart_v0.1/
     │   ├── series_analysis.py   ontbrekende en nieuwe nummers
     │   ├── value_estimation.py  richtprijs
     │   ├── importer.py          Excel-import
+    │   ├── sample_import.py     voorbeeldbestand voor de import
     │   ├── ha_integration.py    Home Assistant
     │   ├── images.py            kaftfoto's verkleinen
     │   └── jobs.py              dagelijkse controle

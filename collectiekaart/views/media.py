@@ -7,7 +7,7 @@ from flask import (
 )
 
 from extensions import db
-from models import CONDITIONS, CustomField, Media, MediaType, Owner, get_setting
+from models import CONDITIONS, CustomField, FIELD_LABELS, Media, MediaType, Owner, get_setting
 from security import allowed_image, clean_text, safe_float, safe_int, unique_filename
 from services.images import save_cover
 from services.lookups import ALLOWED_LOOKUP_FIELDS, analyze_cover_ai, analyze_cover_ocr, lookup_barcode
@@ -16,59 +16,105 @@ media_bp = Blueprint("media", __name__, url_prefix="/media")
 
 
 def _form_context(media=None, prefill=None):
+    media_types = db.session.query(MediaType).order_by(MediaType.label).all()
+    custom_fields = db.session.query(CustomField).order_by(CustomField.label).all()
+
+    # Wat het formulier per type moet tonen en wat verplicht is. De browser
+    # gebruikt dit om bij het wisselen van type meteen de juiste velden te
+    # tonen; de server controleert het bij het opslaan nog eens.
+    config = {}
+    for media_type in media_types:
+        settings = media_type.field_settings()
+        config[media_type.code] = {
+            "fields": {key: {"visible": item["visible"], "required": item["required"]}
+                       for key, item in settings.items()},
+            "custom": {
+                f"cf_{f.key}": {"visible": f.media_type_id in (None, media_type.id),
+                                "required": bool(f.required)}
+                for f in custom_fields
+            },
+        }
+
+    selected = None
+    if media is not None and media.media_type:
+        selected = media.media_type
+    elif prefill and prefill.get("media_type"):
+        selected = next((t for t in media_types if t.code == prefill["media_type"]), None)
+    if selected is None and media_types:
+        selected = media_types[0]
+
     return {
         "media": media,
         "prefill": prefill or {},
-        "media_types": db.session.query(MediaType).order_by(MediaType.label).all(),
+        "media_types": media_types,
         "owners": db.session.query(Owner).order_by(Owner.name).all(),
         "conditions": CONDITIONS,
-        "custom_fields": db.session.query(CustomField).order_by(CustomField.label).all(),
+        "custom_fields": custom_fields,
+        "field_config": config,
+        "current": selected.field_settings() if selected else {},
+        "current_type": selected,
     }
 
 
 def _apply_form(media, form):
-    """Zet de formuliergegevens op het model, met validatie op elk veld."""
+    """
+    Zet de formuliergegevens op het model. Alleen velden die voor dit
+    mediatype zichtbaar zijn worden overgenomen, en verplichte velden worden
+    hier nog eens gecontroleerd: de browser kan die controle overslaan, de
+    server niet.
+    """
     media_type = db.session.query(MediaType).filter_by(code=form.get("media_type", "")).first()
     if media_type is None:
         return "Kies een geldig mediatype."
     media.media_type_id = media_type.id
-
-    owner_id = safe_int(form.get("owner_id"))
-    media.owner_id = owner_id if owner_id and db.session.get(Owner, owner_id) else None
 
     title = clean_text(form.get("title"), 300, allow_empty_none=False)
     if not title:
         return "Een titel is verplicht."
     media.title = title
 
-    media.series = clean_text(form.get("series"), 300)
-    media.series_number = safe_float(form.get("series_number"), None, minimum=0, maximum=10000)
-    media.comment = clean_text(form.get("comment"), 4000)
-    media.barcode = clean_text(form.get("barcode"), 64)
+    zichtbaar = media_type.visible_fields()
+    verplicht = media_type.required_fields()
 
-    media.author = clean_text(form.get("author"), 200)
-    media.collection = clean_text(form.get("collection"), 200)
-    media.collection_number = safe_int(form.get("collection_number"), None, 0, 100000)
-    media.print_number = safe_int(form.get("print_number"), None, 0, 1000)
-    media.is_duplicate = form.get("is_duplicate") == "on"
-    media.is_hardcover = form.get("is_hardcover") == "on"
+    owner_id = safe_int(form.get("owner_id"))
+    waarden = {
+        "owner_id": owner_id if owner_id and db.session.get(Owner, owner_id) else None,
+        "series": clean_text(form.get("series"), 300),
+        "series_number": safe_float(form.get("series_number"), None, minimum=0, maximum=10000),
+        "author": clean_text(form.get("author"), 200),
+        "musician": clean_text(form.get("musician"), 200),
+        "collection": clean_text(form.get("collection"), 200),
+        "collection_number": safe_int(form.get("collection_number"), None, 0, 100000),
+        "print_number": safe_int(form.get("print_number"), None, 0, 1000),
+        "is_hardcover": form.get("is_hardcover") == "on",
+        "is_duplicate": form.get("is_duplicate") == "on",
+        "condition": form.get("condition") if form.get("condition") in CONDITIONS else None,
+        "year": safe_int(form.get("year"), None, 0, 2200),
+        "audio_language": clean_text(form.get("audio_language"), 100),
+        "subtitle_language": clean_text(form.get("subtitle_language"), 100),
+        "barcode": clean_text(form.get("barcode"), 64),
+        "estimated_value": safe_float(form.get("estimated_value"), None, 0, 1000000),
+        "comment": clean_text(form.get("comment"), 4000),
+    }
 
-    condition = form.get("condition") or None
-    media.condition = condition if condition in CONDITIONS else None
+    for key in verplicht:
+        if key in ("cover_image",):
+            continue
+        waarde = waarden.get(key)
+        if waarde in (None, "", False):
+            return f"Het veld '{FIELD_LABELS.get(key, key)}' is verplicht voor {media_type.label}."
 
-    # Bij een cd is het gedeelde veld 'auteur / muzikant' de muzikant.
-    media.musician = clean_text(form.get("musician"), 200)
+    for key, waarde in waarden.items():
+        if key in zichtbaar:
+            setattr(media, key, waarde)
+
+    # Bij een cd is het muzikantveld de maker; blijft het leeg, dan valt het
+    # terug op de auteur.
     if media_type.field_profile == "cd" and not media.musician:
         media.musician = media.author
 
-    media.year = safe_int(form.get("year"), None, 0, 2200)
-    media.audio_language = clean_text(form.get("audio_language"), 100)
-    media.subtitle_language = clean_text(form.get("subtitle_language"), 100)
-
-    value = safe_float(form.get("estimated_value"), None, 0, 1000000)
-    if value != media.estimated_value:
-        media.value_source = "manueel" if value is not None else None
-    media.estimated_value = value
+    if "estimated_value" in zichtbaar:
+        media.value_source = "manueel" if media.estimated_value is not None else None
 
     # Eigen velden uit Instellingen.
     values = dict(media.custom_fields or {})
@@ -77,16 +123,16 @@ def _apply_form(media, form):
             continue
         raw = form.get(f"cf_{field.key}")
         if field.field_type == "checkbox":
-            values[field.key] = raw == "on"
+            waarde = raw == "on"
         elif field.field_type == "number":
-            values[field.key] = safe_float(raw)
+            waarde = safe_float(raw)
         else:
-            values[field.key] = clean_text(raw, 500)
+            waarde = clean_text(raw, 500)
+        if field.required and waarde in (None, "", False):
+            return f"Het veld '{field.label}' is verplicht voor {media_type.label}."
+        values[field.key] = waarde
     media.custom_fields = {k: v for k, v in values.items() if v not in (None, "")}
     return None
-
-
-COVER_NAME_RE = __import__("re").compile(r"^[a-f0-9]{24}\.(jpg|jpeg|png|webp)$")
 
 
 def _handle_cover(media):

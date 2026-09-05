@@ -1,32 +1,59 @@
 /*
-  Toont alleen de velden die bij het gekozen type horen. Velden zonder
-  data-profiles blijven altijd staan.
+  Toont bij het wisselen van mediatype alleen de velden die voor dat type
+  ingesteld staan, en zet meteen de verplichte velden goed. De instellingen
+  komen uit het data-config-attribuut van het formulier; de server controleert
+  bij het opslaan hetzelfde nog eens.
 */
 (function () {
   "use strict";
 
+  var form = document.getElementById("media-form");
   var select = document.getElementById("media_type");
-  if (!select) { return; }
+  if (!form || !select) { return; }
 
-  function currentProfile() {
-    var option = select.options[select.selectedIndex];
-    return (option && option.dataset.profile) || "vrij";
+  var config = {};
+  try {
+    config = JSON.parse(form.dataset.config || "{}");
+  } catch (error) {
+    return;  // zonder instellingen laten we alles staan
+  }
+
+  function apply(container, setting) {
+    var zichtbaar = Boolean(setting && setting.visible);
+    container.hidden = !zichtbaar;
+
+    container.querySelectorAll("input, select, textarea").forEach(function (element) {
+      if (element.type === "file" || element.type === "checkbox") {
+        element.required = false;
+        return;
+      }
+      element.required = zichtbaar && Boolean(setting && setting.required);
+    });
+
+    var markering = container.querySelector(".req");
+    if (markering) {
+      markering.hidden = !(setting && setting.required);
+    }
   }
 
   function update() {
-    var profile = currentProfile();
-    document.querySelectorAll("[data-profiles]").forEach(function (element) {
-      var visible = element.dataset.profiles.split(",").indexOf(profile) !== -1;
-      element.hidden = !visible;
+    var typeConfig = config[select.value];
+    if (!typeConfig) { return; }
+
+    document.querySelectorAll("[data-field]").forEach(function (container) {
+      apply(container, typeConfig.fields[container.dataset.field]);
     });
 
-    // Eigen velden die aan één type gekoppeld zijn: enkel tonen bij dat type.
-    var option = select.options[select.selectedIndex];
-    var typeId = (option && option.dataset.id) || "";
-    document.querySelectorAll("[data-custom-type]").forEach(function (element) {
-      var linked = element.dataset.customType;
-      element.hidden = Boolean(linked) && linked !== typeId;
+    document.querySelectorAll("[data-custom-field]").forEach(function (container) {
+      apply(container, typeConfig.custom[container.dataset.customField]);
     });
+
+    var eigenVelden = document.getElementById("custom-fieldset");
+    if (eigenVelden) {
+      var zichtbaar = [].slice.call(eigenVelden.querySelectorAll("[data-custom-field]"))
+        .some(function (container) { return !container.hidden; });
+      eigenVelden.hidden = !zichtbaar;
+    }
   }
 
   select.addEventListener("change", update);

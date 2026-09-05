@@ -15,6 +15,7 @@
     <li><a href="#waarde">Waarde van de collectie</a></li>
     <li><a href="#uitleen">Uitleen</a></li>
     <li><a href="#instellingen">Instellingen</a></li>
+    <li><a href="#velden">Velden per type</a></li>
     <li><a href="#import">Massa-import</a></li>
     <li><a href="#problemen">Als er iets misloopt</a></li>
   </ul>
@@ -53,10 +54,11 @@
 
   <h3 id="toevoegen">Items toevoegen</h3>
   <p>
-    Kies eerst het type. Het formulier past zich daaraan aan: bij een strip verschijnen collectie
-    en druk, bij een cd de muzikant en het jaar, bij een dvd de audiotaal en de ondertiteling.
-    De staat vul je bij elk type in, dus ook bij een boek of een dvd. Alleen titel en type zijn
-    verplicht, de rest mag je later aanvullen.
+    Kies eerst het type. Het formulier toont dan alleen de velden die bij dat type horen: bij een
+    strip verschijnen reeks, nummer, collectie en staat, bij een cd de muzikant en het jaar, bij
+    een dvd het jaar en de talen. Welke velden dat precies zijn, bepaal je zelf onder
+    Instellingen; zie <a href="#velden">Velden per type</a>. Alleen de titel is altijd verplicht,
+    tenzij je zelf meer velden verplicht maakt.
   </p>
   <p>
     Voor een special die tussen twee nummers valt, mag je een half nummer invullen, bijvoorbeeld
@@ -166,7 +168,34 @@
     "Long-Lived Access Tokens". Met "Verbinding testen" controleer je meteen of het klopt.
   </p>
 
+  <h3 id="velden">Velden per type</h3>
+  <p>
+    Onder Instellingen staat het blok "Velden per type". Klap daar een mediatype open en je ziet
+    elk veld dat de app kent, met twee vinkjes: "tonen" bepaalt of het veld op het invulformulier
+    verschijnt, "verplicht" of het ingevuld moet zijn voor je kan opslaan. Je eigen velden staan
+    in dezelfde lijst, herkenbaar aan het label ernaast.
+  </p>
+  <p>
+    De standaardinstelling volgt wat je logischerwijs per type nodig hebt: strips krijgen reeks,
+    nummer, collectie, druk en staat, boeken auteur, reeks, druk en staat, cd's muzikant en jaar,
+    dvd's jaar en de twee talen. Wijk daar gerust van af; het geldt alleen voor het formulier.
+  </p>
+  <p>
+    Verberg je een veld dat al ingevuld was, dan verdwijnt die informatie niet. Ze blijft in de
+    databank staan, is nog zichtbaar op de volledige lijst, en komt terug zodra je het veld weer
+    aanzet.
+  </p>
+  <p>
+    De titel staat altijd op het formulier en is altijd verplicht. Verplichte velden worden ook
+    op de server gecontroleerd, niet alleen in je browser.
+  </p>
+
   <h3 id="import">Massa-import</h3>
+  <p>
+    Begin met de knop "Voorbeeldbestand downloaden" bij Instellingen. Dat bestand bevat alle
+    kolommen, vijf ingevulde voorbeeldrijen en een tweede blad met uitleg. Vervang de
+    voorbeeldrijen door je eigen collectie en laad het weer op.
+  </p>
   <p>
     Heb je al een lijst in Excel, dan importeer je die in één keer. De eerste rij bevat de
     kolomnamen. Hoofdletters maken niet uit, en kolommen die de app niet kent, worden genegeerd.

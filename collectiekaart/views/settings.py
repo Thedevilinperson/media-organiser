@@ -1,14 +1,21 @@
 """Instellingen: eigenaars, mediatypes, eigen velden, koppelingen en import."""
 import os
 
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint, current_app, flash, jsonify, redirect,
+    render_template, request, send_file, url_for,
+)
 from werkzeug.utils import secure_filename
 
 from extensions import db
-from models import CONDITIONS, CustomField, FIELD_PROFILES, Media, MediaType, Owner, get_setting, set_setting
+from models import (
+    CONDITIONS, CustomField, FIELD_LABELS, FIELD_PROFILES,
+    Media, MediaType, Owner, get_setting, set_setting,
+)
 from security import clean_text, safe_float, safe_int, valid_key
 from services.ha_integration import test_connection
 from services.importer import read_import_file
+from services.sample_import import build_sample_workbook
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/instellingen")
 
@@ -17,11 +24,27 @@ settings_bp = Blueprint("settings", __name__, url_prefix="/instellingen")
 def index():
     ha_token = get_setting("ha_token", "")
     ai_key = get_setting("ai_api_key", "")
+    media_types = db.session.query(MediaType).order_by(MediaType.label).all()
+    custom_fields = db.session.query(CustomField).order_by(CustomField.label).all()
+
+    # Per type: de vaste velden met hun instellingen, plus de eigen velden die
+    # voor dat type gelden.
+    field_overview = []
+    for media_type in media_types:
+        eigen = [f for f in custom_fields if f.media_type_id in (None, media_type.id)]
+        field_overview.append({
+            "type": media_type,
+            "fields": media_type.field_settings(),
+            "custom": eigen,
+        })
+
     return render_template(
         "settings.html",
         owners=db.session.query(Owner).order_by(Owner.name).all(),
-        media_types=db.session.query(MediaType).order_by(MediaType.label).all(),
-        custom_fields=db.session.query(CustomField).order_by(CustomField.label).all(),
+        media_types=media_types,
+        custom_fields=custom_fields,
+        field_overview=field_overview,
+        field_labels=FIELD_LABELS,
         field_profiles=FIELD_PROFILES,
         ai_endpoint=get_setting("ai_endpoint", ""),
         ha_url=get_setting("ha_url", ""),
@@ -95,6 +118,34 @@ def mediatype_delete(type_id):
     return redirect(url_for("settings.index"))
 
 
+@settings_bp.route("/mediatype/<int:type_id>/velden", methods=["POST"])
+def mediatype_fields(type_id):
+    """
+    Legt per mediatype vast welke velden op het formulier verschijnen en welke
+    verplicht zijn (vereiste 1.f.iv).
+    """
+    media_type = db.get_or_404(MediaType, type_id)
+
+    config = {}
+    for key in FIELD_LABELS:
+        zichtbaar = request.form.get(f"visible_{key}") == "on"
+        config[key] = {
+            "visible": zichtbaar,
+            "required": zichtbaar and request.form.get(f"required_{key}") == "on",
+        }
+    media_type.field_config = config
+
+    # Eigen velden hebben hun eigen verplicht-vinkje.
+    for field in db.session.query(CustomField).all():
+        if field.media_type_id in (None, media_type.id):
+            if f"custom_{field.id}" in request.form or f"required_custom_{field.id}" in request.form:
+                field.required = request.form.get(f"required_custom_{field.id}") == "on"
+
+    db.session.commit()
+    flash(f"Velden voor '{media_type.label}' opgeslagen.", "success")
+    return redirect(url_for("settings.index") + "#velden")
+
+
 # ---------------------------------------------------------------------------
 # Eigen velden (vereiste 1.f.iv)
 # ---------------------------------------------------------------------------
@@ -163,6 +214,20 @@ def ha_test():
 # ---------------------------------------------------------------------------
 # Massa-import
 # ---------------------------------------------------------------------------
+@settings_bp.route("/voorbeeld-import.xlsx")
+def sample_file():
+    """
+    Voorbeeldbestand voor de massa-import. Wordt bij het opvragen aangemaakt
+    uit dezelfde kolomtabel als de importer, zodat het altijd klopt.
+    """
+    return send_file(
+        build_sample_workbook(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name="collectiekaart-voorbeeld-import.xlsx",
+    )
+
+
 @settings_bp.route("/import", methods=["POST"])
 def do_import():
     upload = request.files.get("import_file")

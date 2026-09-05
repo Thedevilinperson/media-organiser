@@ -41,8 +41,9 @@ def create_app():
     register_error_handlers(app)
 
     with app.app_context():
-        from models import seed_defaults  # noqa: WPS433 (bewust laat geïmporteerd)
+        from models import ensure_schema, seed_defaults  # bewust laat geïmporteerd
         db.create_all()
+        ensure_schema()
         seed_defaults()
 
     log.info("Collectiekaart %s gestart — data in %s", __version__, app.config["DATA_DIR"])

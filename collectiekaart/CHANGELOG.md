@@ -1,5 +1,21 @@
 # Wijzigingen
 
+## 0.1.4
+
+- Het voorbeeldbestand voor de massa-import is te downloaden vanuit Instellingen.
+  Het wordt bij het opvragen opgebouwd uit dezelfde kolomtabel als de importer,
+  met een tweede blad met uitleg.
+- Het invulformulier toont voortaan alleen de velden die bij het gekozen type
+  horen. Velden als staat, barcode en waarde stonden er eerder bij elk type,
+  ook waar ze niet thuishoorden.
+- Nieuw blok "Velden per type" in Instellingen: per mediatype zie je elk veld en
+  stel je in of het getoond wordt en of het verplicht is. Verplichte velden
+  worden ook op de server gecontroleerd.
+- Een verborgen veld wist niets: bestaande waarden blijven bewaard en blijven
+  zichtbaar op de volledige lijst.
+- Bestaande databanken worden bij het opstarten aangevuld met de nieuwe kolommen,
+  zonder dat er gegevens verloren gaan.
+
 ## 0.1.3
 
 - Het overzicht is opnieuw opgebouwd: per mediatype een korte tabel met alleen de

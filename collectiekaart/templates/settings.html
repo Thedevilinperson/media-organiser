@@ -57,11 +57,55 @@
   </div>
 </div>
 
+
+<div class="panel" id="velden">
+  <h2>Velden per type</h2>
+  <p class="muted">
+    Hier zie je welke velden op het invulformulier verschijnen voor elk type media, en welke
+    verplicht ingevuld moeten worden. Vink "tonen" uit om een veld te verbergen; wat je al
+    ingevuld hebt, blijft bewaard. De titel staat altijd op het formulier.
+  </p>
+
+  {% for blok in field_overview %}
+    <details class="field-config">
+      <summary>{{ blok.type.label }} <span class="muted">({{ blok.type.field_profile }})</span></summary>
+      <form method="post" action="{{ url_for('settings.mediatype_fields', type_id=blok.type.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="field-grid">
+          <div class="field-line">
+            <span class="field-name"><strong>Titel</strong></span>
+            <span class="muted">altijd zichtbaar en verplicht</span>
+          </div>
+          {% for key, item in blok.fields.items() %}
+            <div class="field-line">
+              <span class="field-name">{{ item.label }}</span>
+              <label><input type="checkbox" name="visible_{{ key }}" {% if item.visible %}checked{% endif %}> tonen</label>
+              <label><input type="checkbox" name="required_{{ key }}" {% if item.required %}checked{% endif %}> verplicht</label>
+            </div>
+          {% endfor %}
+          {% for f in blok.custom %}
+            <div class="field-line is-custom">
+              <span class="field-name">{{ f.label }}</span>
+              <input type="hidden" name="custom_{{ f.id }}" value="1">
+              <span class="muted">{{ 'alle types' if not f.media_type_id else 'enkel dit type' }}</span>
+              <label><input type="checkbox" name="required_custom_{{ f.id }}" {% if f.required %}checked{% endif %}> verplicht</label>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-accent">Opslaan voor {{ blok.type.label }}</button>
+        </div>
+      </form>
+    </details>
+  {% endfor %}
+</div>
+
 <div class="panel">
   <h2>Eigen velden</h2>
   <p class="muted">
     Mist er een veld? Voeg het hier toe. Het verschijnt dan op het formulier, ofwel bij elk type,
-    ofwel enkel bij het type dat je kiest.
+    ofwel enkel bij het type dat je kiest. Of het verplicht is, stel je in bij
+    <a href="#velden">Velden per type</a>.
   </p>
   <ul class="tag-list">
     {% for f in custom_fields %}
@@ -158,6 +202,13 @@
     nummer van de druk, eigenaar, dubbel, hardcover, staat, commentaar, muzikant, jaar,
     taal audio, taal ondertiteling, barcode, waarde. De kolom "type" bevat de interne code van
     een bestaand type, bijvoorbeeld <code>strip</code> of <code>boek</code>.
+  </p>
+  <p>
+    <a class="btn btn-outline" href="{{ url_for('settings.sample_file') }}">Voorbeeldbestand downloaden</a>
+  </p>
+  <p class="muted">
+    Het voorbeeldbestand bevat alle kolommen, vijf ingevulde rijen en een blad met uitleg. Vervang
+    de voorbeeldrijen door je eigen collectie en laad het bestand hieronder weer op.
   </p>
   <form method="post" action="{{ url_for('settings.do_import') }}" enctype="multipart/form-data" class="search-row">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
