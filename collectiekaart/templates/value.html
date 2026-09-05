@@ -84,7 +84,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
-<script src="{{ url_for('static', filename='js/value.js') }}"
+<script src="{{ asset('js/app.js') }}"></script>
+<script src="{{ asset('js/value.js') }}"
         data-url="{{ url_for('analysis.value_estimate', media_id=0) }}"></script>
 {% endblock %}

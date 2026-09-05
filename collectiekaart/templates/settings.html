@@ -68,29 +68,46 @@
 
   {% for blok in field_overview %}
     <details class="field-config">
-      <summary>{{ blok.type.label }} <span class="muted">({{ blok.type.field_profile }})</span></summary>
+      <summary>{{ blok.type.label }} <span class="muted">{{ blok.type.field_profile }}</span></summary>
       <form method="post" action="{{ url_for('settings.mediatype_fields', type_id=blok.type.id) }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-        <div class="field-grid">
-          <div class="field-line">
-            <span class="field-name"><strong>Titel</strong></span>
-            <span class="muted">altijd zichtbaar en verplicht</span>
-          </div>
-          {% for key, item in blok.fields.items() %}
-            <div class="field-line">
-              <span class="field-name">{{ item.label }}</span>
-              <label><input type="checkbox" name="visible_{{ key }}" {% if item.visible %}checked{% endif %}> tonen</label>
-              <label><input type="checkbox" name="required_{{ key }}" {% if item.required %}checked{% endif %}> verplicht</label>
-            </div>
-          {% endfor %}
-          {% for f in blok.custom %}
-            <div class="field-line is-custom">
-              <span class="field-name">{{ f.label }}</span>
-              <input type="hidden" name="custom_{{ f.id }}" value="1">
-              <span class="muted">{{ 'alle types' if not f.media_type_id else 'enkel dit type' }}</span>
-              <label><input type="checkbox" name="required_custom_{{ f.id }}" {% if f.required %}checked{% endif %}> verplicht</label>
-            </div>
-          {% endfor %}
+        <div class="table-wrap">
+          <table class="data-table compact field-table">
+            <thead>
+              <tr><th>Veld</th><th class="col-check">Tonen</th><th class="col-check">Verplicht</th></tr>
+            </thead>
+            <tbody>
+              <tr class="field-fixed">
+                <td>Titel <span class="muted">altijd</span></td>
+                <td class="col-check"><input type="checkbox" checked disabled aria-label="Titel wordt altijd getoond"></td>
+                <td class="col-check"><input type="checkbox" checked disabled aria-label="Titel is altijd verplicht"></td>
+              </tr>
+              {% for key, item in blok.fields.items() %}
+              <tr>
+                <td>{{ item.label }}</td>
+                <td class="col-check">
+                  <input type="checkbox" name="visible_{{ key }}" {% if item.visible %}checked{% endif %}
+                         aria-label="{{ item.label }} tonen">
+                </td>
+                <td class="col-check">
+                  <input type="checkbox" name="required_{{ key }}" {% if item.required %}checked{% endif %}
+                         aria-label="{{ item.label }} verplicht">
+                </td>
+              </tr>
+              {% endfor %}
+              {% for f in blok.custom %}
+              <tr>
+                <td>{{ f.label }} <span class="muted">eigen veld{{ ', alle types' if not f.media_type_id }}</span>
+                  <input type="hidden" name="custom_{{ f.id }}" value="1"></td>
+                <td class="col-check"><input type="checkbox" checked disabled aria-label="{{ f.label }} wordt getoond"></td>
+                <td class="col-check">
+                  <input type="checkbox" name="required_custom_{{ f.id }}" {% if f.required %}checked{% endif %}
+                         aria-label="{{ f.label }} verplicht">
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-accent">Opslaan voor {{ blok.type.label }}</button>
@@ -219,6 +236,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
-<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<script src="{{ asset('js/app.js') }}"></script>
+<script src="{{ asset('js/settings.js') }}"></script>
 {% endblock %}

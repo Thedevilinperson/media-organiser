@@ -1,5 +1,17 @@
 # Wijzigingen
 
+## 0.1.5
+
+- Het invulformulier reageerde na een update niet meer op een wisseling van
+  type. De oorzaak lag niet in de code van het formulier zelf: de URL's van de
+  stylesheet en de scripts droegen geen versienummer, waardoor een browser na
+  een update het opgeslagen script van de vorige versie bleef gebruiken. Dat
+  oude script zocht naar markeringen die in het nieuwe formulier niet meer
+  bestaan, zodat er niets meer getoond of verborgen werd. Elke verwijzing naar
+  een statisch bestand draagt nu het versienummer.
+- "Velden per type" in Instellingen staat nu in een tabel met de vinkjes netjes
+  onder elkaar in twee kolommen.
+
 ## 0.1.4
 
 - Het voorbeeldbestand voor de massa-import is te downloaden vanuit Instellingen.

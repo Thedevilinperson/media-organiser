@@ -54,7 +54,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
-<script src="{{ url_for('static', filename='js/series.js') }}"
+<script src="{{ asset('js/app.js') }}"></script>
+<script src="{{ asset('js/series.js') }}"
         data-url="{{ url_for('analysis.series_check_new') }}"></script>
 {% endblock %}

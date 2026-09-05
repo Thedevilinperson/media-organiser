@@ -43,8 +43,8 @@
      gebruikt die automatisch als ze beschikbaar is. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
-<script src="{{ url_for('static', filename='js/scan.js') }}"
+<script src="{{ asset('js/app.js') }}"></script>
+<script src="{{ asset('js/scan.js') }}"
         data-lookup-url="{{ url_for('media.api_barcode', code='CODE') }}"
         data-form-url="{{ url_for('media.add') }}"></script>
 {% endblock %}

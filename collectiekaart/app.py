@@ -28,6 +28,9 @@ log = logging.getLogger("collectiekaart")
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    # Veilig, want elke URL naar een statisch bestand draagt het versienummer:
+    # bij een update wijzigt de URL en haalt de browser het bestand opnieuw op.
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 60 * 60 * 24 * 30
 
     # Volgorde is belangrijk: eerst de headers van de reverse proxy
     # interpreteren, dan het Ingress-subpad toepassen.
@@ -51,6 +54,17 @@ def create_app():
 
 
 def register_filters(app):
+    @app.template_global("asset")
+    def asset(filename):
+        """
+        URL naar een statisch bestand, met het versienummer erin. Zonder dat
+        nummer blijft een browser het opgeslagen bestand van een vorige versie
+        gebruiken, ook na een update van de add-on: het formulier werkt dan met
+        oude JavaScript en reageert niet meer op een wisseling van type.
+        """
+        from flask import url_for
+        return url_for("static", filename=filename, v=__version__)
+
     @app.template_filter("reeksnummer")
     def reeksnummer(value):
         """Toont 12 in plaats van 12.0, en 3.5 blijft 3.5."""

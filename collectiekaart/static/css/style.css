@@ -533,31 +533,31 @@ table.data-table.compact td a:hover { text-decoration: underline; }
 }
 
 /* Velden per type in Instellingen */
-.field-config { margin-top: 8px; }
+.field-config { margin-top: 2px; }
 .field-config > summary {
   cursor: pointer;
   font-weight: 600;
-  font-size: 14px;
-  padding: 8px 0;
+  font-size: 14.5px;
+  padding: 9px 2px;
   border-top: 1px solid var(--line-soft);
+  list-style-position: outside;
 }
 .field-config > summary:hover { color: var(--accent-dark); }
-.field-table td, .field-table th { font-size: 13px; }
-.field-table td input[type="checkbox"] { width: auto; }
-.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 2px 18px; }
-.field-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-.field-line .field-name { flex: 1; }
-.field-line label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-soft); margin: 0; }
-.field-line input[type="checkbox"] { width: auto; }
-.field-line.is-custom .field-name::after {
-  content: "eigen veld";
-  font-size: 10.5px;
-  color: var(--ink-soft);
-  margin-left: 6px;
+.field-config > summary .muted { font-weight: 400; font-size: 12.5px; }
+.field-config[open] > summary { border-bottom: 1px solid var(--line-soft); }
+.field-config form { padding: 4px 0 8px; }
+
+.field-table { max-width: 520px; }
+.field-table th.col-check,
+.field-table td.col-check { width: 84px; text-align: center; }
+.field-table td { padding: 6px 10px; }
+.field-table td:first-child { padding-left: 2px; }
+.field-table input[type="checkbox"] { width: auto; margin: 0; }
+.field-table .muted { font-size: 11.5px; }
+.field-table tr.field-fixed td { color: var(--ink-soft); }
+.field-table input:disabled { opacity: 0.45; }
+
+@media (max-width: 700px) {
+  .field-table { max-width: none; }
+  .field-table th.col-check, .field-table td.col-check { width: 64px; }
 }
