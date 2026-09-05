@@ -457,3 +457,64 @@ table.data-table tfoot td { border-top: 2px solid var(--ink); border-bottom: non
 .value-row .value-input { flex: 0 1 90px; min-width: 70px; padding: 5px 8px; }
 .value-actions { min-width: 150px; }
 .value-actions .muted { font-size: 12px; margin-top: 4px; }
+
+/* ---------- Compact overzicht ---------- */
+.search-panel { padding-bottom: 14px; }
+.result-count { margin: 10px 0 0; }
+
+table.data-table.compact td { padding: 7px 10px; }
+table.data-table.compact td a { text-decoration: none; font-weight: 500; }
+table.data-table.compact td a:hover { text-decoration: underline; }
+
+.lent-mark {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  padding: 0 7px;
+  vertical-align: 1px;
+}
+
+.panel h2 .muted { font-family: var(--font-mono); font-size: 14px; font-weight: 400; }
+
+/* Uitklapbare filters op de volledige lijst */
+.filter-block { margin-top: 4px; }
+.filter-block > summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  padding: 4px 0;
+}
+.filter-block > summary:hover { color: var(--ink); }
+
+.comment-cell { max-width: 260px; }
+
+@media (max-width: 700px) {
+  /* Op een telefoon blijft het overzicht een échte tabel: drie korte kolommen
+     lezen daar prettiger dan drie losse kaartregels per item. */
+  table.data-table.compact thead { display: table-header-group; }
+  table.data-table.compact,
+  table.data-table.compact tbody { display: table; width: 100%; }
+  table.data-table.compact tr {
+    display: table-row;
+    border: none;
+    border-bottom: 1px solid var(--line-soft);
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+  table.data-table.compact td {
+    display: table-cell;
+    text-align: left;
+    padding: 9px 6px 9px 0;
+    border-bottom: none;
+  }
+  table.data-table.compact td::before { content: none; }
+  table.data-table.compact th { padding: 6px 6px 6px 0; }
+  table.data-table.compact td:first-child { max-width: 42%; }
+  .comment-cell { max-width: none; }
+}

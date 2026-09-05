@@ -6,113 +6,90 @@
   {% for label, count in totals %}
     <div class="total-chip">{{ label }} <strong>{{ count }}</strong></div>
   {% endfor %}
-  <div class="total-chip total-all">
-    Alles <strong>{{ grand_total }}</strong>
-  </div>
+  <div class="total-chip total-all">Alles <strong>{{ grand_total }}</strong></div>
 </div>
 
-<form method="get" action="{{ url_for('main.index') }}" class="panel" id="filter-form">
+<form method="get" action="{{ url_for('main.index') }}" class="panel search-panel">
   <div class="search-row">
     <input type="search" name="q" value="{{ q }}" aria-label="Zoeken"
            placeholder="Zoek in titel, reeks, auteur, commentaar, barcode …">
     <button type="submit">Zoeken</button>
-    {% if q or filters.type or filters.owner or filters.series or filters.title %}
-      <a class="btn btn-outline" href="{{ url_for('main.index') }}">Filters wissen</a>
-    {% endif %}
+    {% if q %}<a class="btn btn-outline" href="{{ url_for('main.index') }}">Wissen</a>{% endif %}
   </div>
-  <div class="filter-bar">
-    <div>
-      <label for="f-type">Type</label>
-      <select name="type" id="f-type" data-autosubmit>
-        <option value="">Alle types</option>
-        {% for code, label in type_options %}
-          <option value="{{ code }}" {{ 'selected' if filters.type == code }}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label for="f-owner">Eigenaar</label>
-      <select name="owner" id="f-owner" data-autosubmit>
-        <option value="">Alle eigenaars</option>
-        {% for name in owner_options %}
-          <option value="{{ name }}" {{ 'selected' if filters.owner == name }}>{{ name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label for="f-series">Reeks</label>
-      <select name="series" id="f-series" data-autosubmit>
-        <option value="">Alle reeksen</option>
-        {% for name in series_options %}
-          <option value="{{ name }}" {{ 'selected' if filters.series == name }}>{{ name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label for="f-title">Titel</label>
-      <select name="title" id="f-title" data-autosubmit>
-        <option value="">Alle titels</option>
-        {% for name in title_options %}
-          <option value="{{ name }}" {{ 'selected' if filters.title == name }}>{{ name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-  </div>
-  <noscript><div class="form-actions"><button type="submit">Filters toepassen</button></div></noscript>
+  {% if q %}
+    <p class="muted result-count">{{ shown }} van {{ grand_total }} items</p>
+  {% endif %}
 </form>
 
+{% for group in groups %}
 <div class="panel">
+  <h2>{{ group.label }} <span class="muted">{{ group.rows|length }}</span></h2>
   <div class="table-wrap">
-    <table class="data-table">
-      <caption class="table-caption">
-        {{ items|length }} van {{ grand_total }} items
-      </caption>
+    <table class="data-table compact">
       <thead>
-        <tr>
-          <th>Kaft</th><th>Type</th><th>Reeks</th><th>Nr.</th><th>Titel</th>
-          <th>Auteur</th><th>Eigenaar</th><th>Staat</th><th>Uitgeleend</th><th></th>
-        </tr>
+        <tr>{% for column in group.columns %}<th>{{ column }}</th>{% endfor %}</tr>
       </thead>
       <tbody>
-        {% for m in items %}
+        {% for m in group.rows %}
         <tr>
-          <td data-label="Kaft">
-            {% if m.cover_image %}
-              <img class="cover-thumb" loading="lazy" alt=""
-                   src="{{ url_for('main.uploaded_file', filename=m.cover_image) }}">
-            {% else %}<span class="cover-empty"></span>{% endif %}
-          </td>
-          <td data-label="Type"><span class="type-badge">{{ m.media_type.label if m.media_type else '—' }}</span></td>
-          <td data-label="Reeks">{{ m.series or '—' }}</td>
-          <td data-label="Nr." class="mono">{{ m.series_number | reeksnummer }}</td>
-          <td data-label="Titel"><strong>{{ m.title }}</strong></td>
-          <td data-label="Auteur">{{ m.creator or '—' }}</td>
-          <td data-label="Eigenaar">{{ m.owner.name if m.owner else '—' }}</td>
-          <td data-label="Staat">{{ m.condition or '—' }}</td>
-          <td data-label="Uitgeleend">
-            {% if m.active_loan %}
-              <span class="overdue">bij {{ m.active_loan.borrower_name }}</span>
-            {% else %}nee{% endif %}
-          </td>
-          <td data-label="" class="row-actions">
-            <a class="btn btn-outline btn-small" href="{{ url_for('media.edit', media_id=m.id) }}">Wijzigen</a>
-            <form method="post" action="{{ url_for('media.delete', media_id=m.id) }}"
-                  data-confirm="'{{ m.title }}' verwijderen?">
-              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-              <button class="btn btn-danger btn-small" type="submit">Verwijderen</button>
-            </form>
-          </td>
+          {% if group.profile == 'strip' %}
+            <td data-label="Reeks">{{ m.series or '—' }}</td>
+            <td data-label="Nr." class="mono">{{ m.series_number | reeksnummer }}</td>
+            <td data-label="Titel">
+              <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
+              {% if m.active_loan %}<span class="lent-mark" title="uitgeleend aan {{ m.active_loan.borrower_name }}">uitgeleend</span>{% endif %}
+            </td>
+          {% elif group.profile == 'boek' %}
+            <td data-label="Auteur">{{ m.author or '—' }}</td>
+            <td data-label="Titel">
+              <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
+              {% if m.active_loan %}<span class="lent-mark">uitgeleend</span>{% endif %}
+            </td>
+          {% elif group.profile == 'cd' %}
+            <td data-label="Muzikant">{{ m.musician or m.author or '—' }}</td>
+            <td data-label="Titel">
+              <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
+              {% if m.active_loan %}<span class="lent-mark">uitgeleend</span>{% endif %}
+            </td>
+            <td data-label="Jaar" class="mono">{{ m.year or '—' }}</td>
+          {% elif group.profile == 'dvd' %}
+            <td data-label="Titel">
+              <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
+              {% if m.active_loan %}<span class="lent-mark">uitgeleend</span>{% endif %}
+            </td>
+            <td data-label="Jaar" class="mono">{{ m.year or '—' }}</td>
+          {% else %}
+            <td data-label="Titel">
+              <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
+              {% if m.active_loan %}<span class="lent-mark">uitgeleend</span>{% endif %}
+            </td>
+          {% endif %}
         </tr>
-        {% else %}
-        <tr><td colspan="10" class="empty">
-          Nog niets gevonden. <a href="{{ url_for('media.add') }}">Voeg je eerste item toe</a>
-          of <a href="{{ url_for('media.scan') }}">scan een barcode</a>.
-        </td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+{% else %}
+<div class="panel">
+  <p class="empty">
+    {% if q %}
+      Niets gevonden voor "{{ q }}". <a href="{{ url_for('main.index') }}">Toon alles</a>.
+    {% else %}
+      Je collectie is nog leeg. <a href="{{ url_for('media.add') }}">Voeg je eerste item toe</a>
+      of <a href="{{ url_for('media.scan') }}">scan een barcode</a>.
+    {% endif %}
+  </p>
+</div>
+{% endfor %}
+
+{% if groups %}
+  <p class="muted">
+    Alle velden, filters en de knoppen om te wijzigen of te verwijderen staan op de
+    <a href="{{ url_for('main.full_list') }}">volledige lijst</a>. Tik hierboven op een titel om
+    dat item meteen te openen.
+  </p>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

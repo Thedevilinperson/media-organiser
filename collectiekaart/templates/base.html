@@ -15,6 +15,7 @@
       <p class="app-tagline">Je boeken, strips, comics, manga, anime, cd's en dvd's op één plek.</p>
       <nav class="main-nav" aria-label="Hoofdnavigatie">
         <a href="{{ url_for('main.index') }}" class="{{ 'active' if request.endpoint == 'main.index' }}">Overzicht</a>
+        <a href="{{ url_for('main.full_list') }}" class="{{ 'active' if request.endpoint == 'main.full_list' }}">Volledige lijst</a>
         <a href="{{ url_for('media.add') }}" class="{{ 'active' if request.endpoint == 'media.add' }}">Toevoegen</a>
         <a href="{{ url_for('media.scan') }}" class="{{ 'active' if request.endpoint == 'media.scan' }}">Scannen</a>
         <a href="{{ url_for('media.photo') }}" class="{{ 'active' if request.endpoint == 'media.photo' }}">Foto</a>

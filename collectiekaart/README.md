@@ -6,11 +6,15 @@ Assistant, en is bruikbaar op een smartphone.
 
 ## Wat er in zit
 
-- **Overzicht** met een zoekbalk die over alle kolommen tegelijk zoekt, en vier
-  keuzelijsten (type, eigenaar, reeks, titel) die elkaars inhoud beperken tot wat
-  nog mogelijk is. Bovenaan staan de aantallen per type. Strips, comics, manga en
-  anime staan alfabetisch op reeks en daarbinnen op nummer. Op een telefoon wordt
-  de tabel een kaartenlijst.
+- **Overzicht**: een korte tabel per mediatype met alleen de kolommen die er voor
+  dat type toe doen. Strips op reeks, nummer en titel; boeken op auteur en titel;
+  cd's op muzikant, titel en jaar; dvd's op titel en jaar. Bovenaan de aantallen
+  per type, daaronder één zoekbalk die over alle kolommen zoekt. Blijft ook op een
+  smartphone een echte tabel.
+- **Volledige lijst**: dezelfde collectie met álle velden, inclusief je eigen
+  velden, plus de vier keuzelijsten (type, eigenaar, reeks, titel) die elkaars
+  inhoud beperken tot wat nog mogelijk is, en de knoppen om te wijzigen of te
+  verwijderen.
 - **Drie manieren van ingeven**: manueel, met de camera via een barcode, of door
   een foto van de kaft te laten analyseren.
 - **Reeksanalyse**: welke nummers ontbreken in je reeksen, en zijn er nummers

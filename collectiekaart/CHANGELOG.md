@@ -1,5 +1,16 @@
 # Wijzigingen
 
+## 0.1.3
+
+- Het overzicht is opnieuw opgebouwd: per mediatype een korte tabel met alleen de
+  kolommen die voor dat type nuttig zijn, en alleen nog een zoekbalk. Op een
+  telefoon zie je zo meteen resultaten in plaats van eerst vier keuzelijsten.
+- Nieuwe pagina "Volledige lijst" tussen Overzicht en Toevoegen, met alle velden
+  en de cascaderende filters die eerder op het overzicht stonden.
+- Het overzicht blijft ook op een smal scherm een echte tabel; de volledige lijst
+  wordt daar wel een kaartenlijst, omdat drieëntwintig kolommen anders onleesbaar
+  zijn.
+
 ## 0.1.2
 
 - Het veld "Staat" stond alleen bij strips en verscheen dus niet bij een boek.
