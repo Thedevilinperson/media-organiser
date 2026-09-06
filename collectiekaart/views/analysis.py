@@ -17,6 +17,20 @@ analysis_bp = Blueprint("analysis", __name__, url_prefix="/analyse")
 # Profielen waarvoor een reeksanalyse zinvol is.
 SERIES_PROFILES = ("strip", "boek")
 
+# Statusfilter op de reeksenpagina: combineert de lokaal berekende ontbrekende
+# nummers met het resultaat van de controle bij De Poort. Een lege waarde
+# betekent "alles" en filtert niet.
+STATUS_OPTIONS = [
+    ("missing_no_new", "Ontbrekende nummers, geen nieuwe gevonden"),
+    ("missing_new", "Ontbrekende nummers, mét nieuwe gevonden"),
+    ("complete_new", "Volledige reeks, mét nieuwe gevonden"),
+]
+
+
+def _has_new_numbers(check):
+    """Of de laatste controle bij De Poort nieuwe nummers opleverde."""
+    return bool(check and check.ok and check.new_numbers)
+
 
 @analysis_bp.route("/reeksen")
 def series():
@@ -25,6 +39,7 @@ def series():
         "owner": request.args.get("owner", "").strip(),
         "series": request.args.get("series", "").strip(),
         "author": request.args.get("author", "").strip(),
+        "status": request.args.get("status", "").strip(),
     }
 
     all_items = (
@@ -74,6 +89,17 @@ def series():
     checks = {c.series: c for c in db.session.query(SeriesCheck).all()}
     for row in analysis:
         row["check"] = checks.get(row["series"])
+        row["has_new"] = _has_new_numbers(row["check"])
+
+    # Statusfilter: werkt op het resultaat van de analyse (ontbrekende nummers
+    # + laatste controle bij De Poort), niet op de ruwe items, en staat dus los
+    # van de cascaderende keuzelijsten hierboven.
+    if filters["status"] == "missing_no_new":
+        analysis = [row for row in analysis if row["missing"] and not row["has_new"]]
+    elif filters["status"] == "missing_new":
+        analysis = [row for row in analysis if row["missing"] and row["has_new"]]
+    elif filters["status"] == "complete_new":
+        analysis = [row for row in analysis if not row["missing"] and row["has_new"]]
 
     return render_template(
         "series_analysis.html",
@@ -83,6 +109,7 @@ def series():
         owner_options=owner_options,
         series_options=series_options,
         author_options=author_options,
+        status_options=STATUS_OPTIONS,
         check_running=get_setting("series_check_running") == "1",
     )
 

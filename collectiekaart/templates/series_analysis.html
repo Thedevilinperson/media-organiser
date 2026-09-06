@@ -26,9 +26,18 @@
 
 <div class="panel">
   <form method="get" action="{{ url_for('analysis.series') }}">
-    <details class="filter-block" {% if filters.type or filters.owner or filters.series or filters.author %}open{% endif %}>
+    <details class="filter-block" {% if filters.type or filters.owner or filters.series or filters.author or filters.status %}open{% endif %}>
       <summary>Filters</summary>
       <div class="filter-bar">
+        <div>
+          <label for="f-status">Status</label>
+          <select name="status" id="f-status" data-autosubmit>
+            <option value="">Alles</option>
+            {% for value, label in status_options %}
+              <option value="{{ value }}" {{ 'selected' if filters.status == value }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <div>
           <label for="f-type">Type</label>
           <select name="type" id="f-type" data-autosubmit>
@@ -66,7 +75,7 @@
           </select>
         </div>
       </div>
-      {% if filters.type or filters.owner or filters.series or filters.author %}
+      {% if filters.type or filters.owner or filters.series or filters.author or filters.status %}
         <p class="muted"><a href="{{ url_for('analysis.series') }}">Filters wissen</a></p>
       {% endif %}
       <noscript><div class="form-actions"><button type="submit">Filters toepassen</button></div></noscript>

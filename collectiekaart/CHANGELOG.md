@@ -1,5 +1,17 @@
 # Wijzigingen
 
+## 0.1.10
+
+- De reeksenpagina had geen manier om meteen te zien welke reeksen aandacht
+  nodig hebben zodra een collectie groot wordt. Er staat nu een vijfde filter
+  "Status" bij de andere keuzelijsten, met vier opties: "Alles", "Ontbrekende
+  nummers, geen nieuwe gevonden", "Ontbrekende nummers, mét nieuwe gevonden"
+  en "Volledige reeks, mét nieuwe gevonden". Zo filter je in één klik op net
+  die reeksen waar je nog iets voor moet doen, los van de bestaande filters op
+  type, eigenaar, reeks en auteur. De kolom "Nieuw bij De Poort" met het
+  resultaat van de controle op nieuwe exemplaren stond al op deze pagina en
+  blijft ongewijzigd.
+
 ## 0.1.9
 
 - De volledige lijst toonde altijd alle vierentwintig kolommen, ook velden die
