@@ -71,51 +71,85 @@
 <div class="panel">
   <div class="table-wrap">
     <table class="data-table">
-      <caption class="table-caption">{{ items|length }} van {{ grand_total }} items · alle velden</caption>
+      <caption class="table-caption">{{ items|length }} van {{ grand_total }} items</caption>
       <thead>
         <tr>
-          <th>Kaft</th><th>Type</th><th>Reeks</th><th>Nr.</th><th>Titel</th>
-          <th>Auteur</th><th>Muzikant</th><th>Collectie</th><th>Nr. coll.</th><th>Druk</th>
-          <th>Hardcover</th><th>Dubbel</th><th>Staat</th><th>Eigenaar</th><th>Jaar</th>
-          <th>Taal audio</th><th>Ondertiteling</th><th>Barcode</th><th>Waarde</th>
+          {% for key, label in columns %}<th>{{ label }}</th>{% endfor %}
           {% for f in custom_fields %}<th>{{ f.label }}</th>{% endfor %}
-          <th>Commentaar</th><th>Uitgeleend</th><th></th>
+          {% if show_comment %}<th>Commentaar</th>{% endif %}
+          <th>Uitgeleend</th><th></th>
         </tr>
       </thead>
       <tbody>
         {% for m in items %}
         <tr>
+          {% if 'cover_image' in visible_fields %}
           <td data-label="Kaft">
             {% if m.cover_image %}
               <img class="cover-thumb" loading="lazy" alt=""
                    src="{{ url_for('main.uploaded_file', filename=m.cover_image) }}">
             {% else %}<span class="cover-empty"></span>{% endif %}
           </td>
+          {% endif %}
           <td data-label="Type"><span class="type-badge">{{ m.media_type.label if m.media_type else '—' }}</span></td>
+          {% if 'series' in visible_fields %}
           <td data-label="Reeks">{{ m.series or '—' }}</td>
+          {% endif %}
+          {% if 'series_number' in visible_fields %}
           <td data-label="Nr." class="mono">{{ m.series_number | reeksnummer }}</td>
+          {% endif %}
           <td data-label="Titel"><strong>{{ m.title }}</strong></td>
+          {% if 'author' in visible_fields %}
           <td data-label="Auteur">{{ m.author or '—' }}</td>
+          {% endif %}
+          {% if 'musician' in visible_fields %}
           <td data-label="Muzikant">{{ m.musician or '—' }}</td>
+          {% endif %}
+          {% if 'collection' in visible_fields %}
           <td data-label="Collectie">{{ m.collection or '—' }}</td>
+          {% endif %}
+          {% if 'collection_number' in visible_fields %}
           <td data-label="Nr. coll." class="mono">{{ m.collection_number if m.collection_number is not none else '—' }}</td>
+          {% endif %}
+          {% if 'print_number' in visible_fields %}
           <td data-label="Druk" class="mono">{{ m.print_number if m.print_number is not none else '—' }}</td>
+          {% endif %}
+          {% if 'is_hardcover' in visible_fields %}
           <td data-label="Hardcover">{{ 'ja' if m.is_hardcover else 'nee' }}</td>
+          {% endif %}
+          {% if 'is_duplicate' in visible_fields %}
           <td data-label="Dubbel">{{ 'ja' if m.is_duplicate else 'nee' }}</td>
+          {% endif %}
+          {% if 'condition' in visible_fields %}
           <td data-label="Staat">{{ m.condition or '—' }}</td>
+          {% endif %}
+          {% if 'owner_id' in visible_fields %}
           <td data-label="Eigenaar">{{ m.owner.name if m.owner else '—' }}</td>
+          {% endif %}
+          {% if 'year' in visible_fields %}
           <td data-label="Jaar" class="mono">{{ m.year or '—' }}</td>
+          {% endif %}
+          {% if 'audio_language' in visible_fields %}
           <td data-label="Taal audio">{{ m.audio_language or '—' }}</td>
+          {% endif %}
+          {% if 'subtitle_language' in visible_fields %}
           <td data-label="Ondertiteling">{{ m.subtitle_language or '—' }}</td>
+          {% endif %}
+          {% if 'barcode' in visible_fields %}
           <td data-label="Barcode" class="mono">{{ m.barcode or '—' }}</td>
+          {% endif %}
+          {% if 'estimated_value' in visible_fields %}
           <td data-label="Waarde" class="mono">{{ m.estimated_value | euro if m.estimated_value else '—' }}</td>
+          {% endif %}
           {% for f in custom_fields %}
             {% set value = (m.custom_fields or {}).get(f.key) %}
             <td data-label="{{ f.label }}">
               {% if value is sameas true %}ja{% elif value is sameas false %}nee{% else %}{{ value if value not in (none, '') else '—' }}{% endif %}
             </td>
           {% endfor %}
+          {% if show_comment %}
           <td data-label="Commentaar" class="comment-cell">{{ m.comment or '—' }}</td>
+          {% endif %}
           <td data-label="Uitgeleend">
             {% if m.active_loan %}
               <span class="overdue">bij {{ m.active_loan.borrower_name }}</span>
@@ -131,7 +165,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="24" class="empty">Niets gevonden met deze zoekterm of filters.</td></tr>
+        <tr><td colspan="{{ column_count }}" class="empty">Niets gevonden met deze zoekterm of filters.</td></tr>
         {% endfor %}
       </tbody>
     </table>

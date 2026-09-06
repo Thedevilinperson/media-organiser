@@ -1,5 +1,20 @@
 # Wijzigingen
 
+## 0.1.9
+
+- De volledige lijst toonde altijd alle vierentwintig kolommen, ook velden die
+  voor geen enkel getoond mediatype van toepassing zijn — bv. "Taal audio" en
+  "Ondertiteling" bij een lijst zonder dvd's, of "Hardcover" en "Staat" bij een
+  lijst met enkel cd's. De lijst toont nu enkel de kolommen die bij minstens
+  één van de mediatypes in het huidige resultaat horen, gebaseerd op dezelfde
+  instelling ("Velden per type" in Instellingen) die ook het invulformulier
+  al gebruikte. Filter je op één type, dan valt de tabel meteen een stuk
+  smaller uit; bij "Alles" blijft de unie van de aanwezige types te zien.
+- Rijen op de volledige lijst konden drie regels hoog worden zodra een cel
+  wat langere tekst bevatte (bv. een gedeelde eigenaar als "Gwen & Greet").
+  Cellen staan nu standaard op één regel; de tabel schuift al horizontaal
+  mee als ze breder wordt dan het scherm, dus er gaat niets verloren.
+
 ## 0.1.8
 
 - Overzicht, Volledige lijst, Waarde, Uitleen en Reeksen gebruiken voortaan de

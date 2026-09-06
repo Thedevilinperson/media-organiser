@@ -303,9 +303,18 @@ table.data-table th {
 }
 
 table.data-table td {
-  padding: 8px 10px;
+  padding: 6px 9px;
   border-bottom: 1px solid var(--line-soft);
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+    /* Volledige lijst: alles op één lijn houden, geen 3-regelige cellen meer
+       zoals bij een gedeelde eigenaar ("Gwen & Greet"). De tabel schuift al
+       horizontaal (.table-wrap), dus dit kan veilig. */
+table.data-table td.comment-cell,
+table.data-table td[data-label="Titel"] {
+  white-space: normal;
 }
 
 table.data-table tbody tr:hover td { background: #f2f3ee; }
