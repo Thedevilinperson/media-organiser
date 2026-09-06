@@ -62,8 +62,23 @@ def safe_int(value, default=None, minimum=None, maximum=None):
 
 
 def clean_text(value, max_length=300, allow_empty_none=True):
-    """Trimt en begrenst vrije tekst; voorkomt overdreven lange invoer."""
-    text = (value or "").strip()
+    """
+    Trimt en begrenst vrije tekst; voorkomt overdreven lange invoer.
+
+    Verwerkt ook niet-tekstwaarden. Een formulierveld levert altijd een string,
+    maar de Excel-import (openpyxl) geeft een cel als "12" terug als een
+    Python-getal, niet als tekst. (value or "").strip() knalde daar vroeger op
+    met een AttributeError zodra een tekstveld — reeks, auteur, collectie,
+    commentaar, muzikant, taal — toevallig een getal bevatte, wat de hele
+    import op de eerste zo'n rij deed mislukken. Een geheel getal als 12.0
+    wordt hier als "12" weergegeven, niet als "12.0".
+    """
+    if value is None:
+        text = ""
+    elif isinstance(value, float) and value.is_integer():
+        text = str(int(value))
+    else:
+        text = str(value).strip()
     if len(text) > max_length:
         text = text[:max_length]
     if not text and allow_empty_none:
@@ -90,7 +105,7 @@ def register_security(app):
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("Referrer-Policy", "same-origin")
         # Geen 'unsafe-inline' voor scripts: alle JavaScript staat in
-        # aparte bestanden. 'frame-ancestors' wordt bewust
+        # aparte bestanden onder /assets/js. 'frame-ancestors' wordt bewust
         # NIET beperkt, anders kan Home Assistant de add-on niet in een
         # iframe (Ingress) tonen.
         resp.headers.setdefault(
