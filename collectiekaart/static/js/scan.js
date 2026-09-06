@@ -78,43 +78,92 @@
     return true;
   }
 
+  /* Veldnamen in het Nederlands, zodat de lijst leesbaar is. */
+  var LABELS = {
+    title: "Titel",
+    series: "Reeks",
+    series_number: "Nummer in de reeks",
+    author: "Auteur / tekenaar",
+    musician: "Muzikant",
+    collection: "Collectie",
+    year: "Jaar"
+  };
+
   function lookup(code) {
-    setStatus("Barcode " + code + " gelezen. Gegevens opzoeken…");
+    setStatus("Barcode " + code + " gelezen. Zeven catalogi tegelijk bevragen…");
     resultEl.hidden = true;
     fetch(lookupTemplate.replace("CODE", encodeURIComponent(code)))
       .then(function (response) { return response.json(); })
       .then(function (data) { show(code, data); })
       .catch(function () {
         setStatus("Opzoeken lukte niet. Ga verder en vul de velden zelf in.");
-        show(code, { barcode: code });
+        show(code, { barcode: code, fields: { barcode: code }, sources: [], links: [] });
       });
   }
 
   function show(code, data) {
+    // De server stuurt sinds 0.1.13 een omhulsel met velden, bronnen en
+    // zoeklinks. Een oud antwoord (enkel velden) blijft ook werken.
+    var fields = data.fields || data;
+    var sources = data.sources || [];
+    var links = data.links || [];
+    var fromCollection = data.from_collection || [];
+
     document.getElementById("found-code").textContent = code;
     var list = document.getElementById("found-fields");
     list.textContent = "";
 
-    var keys = Object.keys(data).filter(function (key) { return key !== "barcode"; });
+    var keys = Object.keys(fields).filter(function (key) { return key !== "barcode"; });
     if (!keys.length) {
       var empty = document.createElement("li");
       empty.className = "muted";
-      empty.textContent = "Deze code staat niet in Open Library of Google Books. "
-        + "Ga verder en vul de velden zelf in; de barcode wordt bewaard.";
+      empty.textContent = "Geen van de geraadpleegde catalogi kent deze code. Dat komt voor bij "
+        + "stripalbums zonder ISBN en bij oudere uitgaven. Ga verder en vul de velden zelf in; "
+        + "de barcode wordt bewaard.";
       list.appendChild(empty);
     } else {
       keys.forEach(function (key) {
         var item = document.createElement("li");
         var label = document.createElement("strong");
-        label.textContent = key + ": ";
+        label.textContent = (LABELS[key] || key) + ": ";
         item.appendChild(label);
-        item.appendChild(document.createTextNode(String(data[key])));
+        item.appendChild(document.createTextNode(String(fields[key])));
         list.appendChild(item);
       });
     }
 
-    document.getElementById("continue-link").href =
-      formUrl + "?" + new URLSearchParams(data).toString();
+    var sourceEl = document.getElementById("found-sources");
+    var delen = [];
+    if (sources.length) { delen.push("Gevonden bij: " + sources.join(", ") + "."); }
+    if (fromCollection.length) {
+      delen.push("Aangevuld uit je eigen collectie: " + fromCollection.join(", ") + ".");
+    }
+    if (!sources.length && data.tried && data.tried.length) {
+      delen.push("Bevraagd zonder resultaat: " + data.tried.join(", ") + ".");
+    }
+    sourceEl.textContent = delen.join(" ");
+
+    var linkBlok = document.getElementById("found-links");
+    var linkLijst = document.getElementById("found-links-list");
+    linkLijst.textContent = "";
+    if (links.length) {
+      links.forEach(function (link, index) {
+        if (index) { linkLijst.appendChild(document.createTextNode(" · ")); }
+        var anchor = document.createElement("a");
+        anchor.href = link.url;
+        anchor.target = "_blank";
+        anchor.rel = "noopener";
+        anchor.textContent = link.label;
+        linkLijst.appendChild(anchor);
+      });
+      linkBlok.hidden = false;
+    } else {
+      linkBlok.hidden = true;
+    }
+
+    var params = new URLSearchParams(fields);
+    if (data.suggested_type) { params.set("media_type", data.suggested_type); }
+    document.getElementById("continue-link").href = formUrl + "?" + params.toString();
     resultEl.hidden = false;
     setStatus("");
   }

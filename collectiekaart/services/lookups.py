@@ -1,8 +1,11 @@
 """
 Automatisch invullen van velden.
 
-1. Barcode (ISBN/EAN) -> Open Library en Google Books. Beide gratis, zonder
-   sleutel en zonder AI.
+1. Barcode (ISBN/EAN) -> een reeks gratis catalogi zonder sleutel. Welke dat
+   zijn en waarom, staat in `services/barcode_sources.py`. Kort: Google Books,
+   Open Library, de Koninklijke Bibliotheek (GGC), Wikidata, de BnF, openBD en
+   MusicBrainz, plus zoeklinks naar Stripinfo, LastDodo en Boekwinkeltjes voor
+   wat geen open interface heeft.
 2. Foto van de kaft:
    - zonder AI: lokale OCR met tesseract (geen internet nodig);
    - met AI (optioneel): een vision-model dat titel/reeks/nummer/auteur
@@ -13,6 +16,9 @@ import json
 import re
 
 import requests
+
+from services import barcode_sources
+from services.barcode_sources import Code, ean_checksum_ok  # noqa: F401  (blijft hier bruikbaar)
 
 try:
     import pytesseract
@@ -51,102 +57,84 @@ def _filter_fields(raw):
 # ---------------------------------------------------------------------------
 # 1. Barcode (geen AI nodig)
 # ---------------------------------------------------------------------------
-def ean_checksum_ok(code):
+# Een kleine cache in het geheugen. Scan je per ongeluk twee keer dezelfde
+# code, of ga je terug in de browser, dan worden zeven catalogi niet opnieuw
+# lastiggevallen. Bewust klein en zonder vervaldatum: het proces herstart vaak
+# genoeg en boekgegevens wijzigen niet.
+_CACHE = {}
+_CACHE_MAX = 200
+
+
+def lookup_barcode_detailed(code):
     """
-    Controleert het controlecijfer van een EAN-13 of UPC-A.
+    Zoekt een ISBN of EAN op bij alle bronnen die er iets over kunnen weten.
 
-    EAN-8 wordt bewust geweigerd: dat formaat komt niet voor op boeken of
-    strips, en een half gelezen EAN-13 ziet er soms uit als een geldige EAN-8.
+    Geeft terug:
+      barcode        de genormaliseerde code
+      fields         de samengevoegde velden, klaar voor het formulier
+      sources        de labels van de bronnen die effectief iets opleverden
+      tried          de labels van alle bevraagde bronnen
+      links          zoeklinks naar sites zonder open interface
+      found          of er iets bruikbaars uit kwam
+      kind           'isbn', 'ean' of 'onbekend'
+      suggested_type een gok voor het mediatype ('boek', 'strip', 'cd')
+
+    Elke bron faalt zacht. Ligt er één plat of is ze traag, dan blijven de
+    andere gewoon gelden.
     """
-    if not code.isdigit():
-        return False
-    if len(code) == 12:
-        # Een UPC-A begint nooit met 97; zo'n code is een ISBN waarvan er een
-        # cijfer wegviel bij het scannen.
-        if code.startswith("97"):
-            return False
-        code = "0" + code
-    if len(code) != 13:
-        return False
-    digits = [int(c) for c in code]
-    check = digits.pop()
-    total = sum(d * (3 if i % 2 == 0 else 1) for i, d in enumerate(reversed(digits)))
-    return (10 - total % 10) % 10 == check
+    info = Code(code)
+    if not info.raw:
+        return {"barcode": "", "fields": {}, "sources": [], "tried": [],
+                "links": [], "found": False, "kind": "onbekend", "suggested_type": None}
+
+    if info.raw in _CACHE:
+        return _CACHE[info.raw]
+
+    resultaten = barcode_sources.gather(info)
+    velden = _filter_fields(barcode_sources.merge(info, resultaten))
+    velden["barcode"] = info.raw
+
+    labels = [barcode_sources.SOURCES[naam][0] for naam in resultaten]
+    tried = [barcode_sources.SOURCES[naam][0]
+             for naam in barcode_sources.relevant_sources(info)]
+
+    antwoord = {
+        "barcode": info.raw,
+        "fields": velden,
+        "sources": labels,
+        "tried": tried,
+        "links": barcode_sources.search_links(info, velden.get("title")),
+        "found": bool(velden.get("title")),
+        "kind": "isbn" if info.is_isbn else ("ean" if len(info.raw) >= 12 else "onbekend"),
+        "suggested_type": _guess_type(info, resultaten, velden),
+    }
+
+    if len(_CACHE) >= _CACHE_MAX:
+        _CACHE.clear()
+    _CACHE[info.raw] = antwoord
+    return antwoord
 
 
-def _from_open_library(code):
-    try:
-        resp = requests.get(
-            "https://openlibrary.org/api/books",
-            params={"bibkeys": f"ISBN:{code}", "format": "json", "jscmd": "data"},
-            timeout=TIMEOUT,
-        )
-        book = (resp.json() or {}).get(f"ISBN:{code}")
-    except Exception:
-        return {}
-    if not book:
-        return {}
-
-    found = {"title": book.get("title", "")}
-    authors = book.get("authors") or []
-    if authors:
-        found["author"] = ", ".join(a.get("name", "") for a in authors)
-    year = re.search(r"(\d{4})", book.get("publish_date", "") or "")
-    if year:
-        found["year"] = year.group(1)
-    return found
-
-
-def _from_google_books(code):
-    try:
-        resp = requests.get(
-            "https://www.googleapis.com/books/v1/volumes",
-            params={"q": f"isbn:{code}"},
-            timeout=TIMEOUT,
-        )
-        items = (resp.json() or {}).get("items") or []
-    except Exception:
-        return {}
-    if not items:
-        return {}
-
-    info = items[0].get("volumeInfo", {})
-    title = info.get("title", "")
-    if info.get("subtitle"):
-        title = f"{title}: {info['subtitle']}"
-    found = {"title": title}
-    if info.get("authors"):
-        found["author"] = ", ".join(info["authors"])
-    year = re.search(r"(\d{4})", info.get("publishedDate", "") or "")
-    if year:
-        found["year"] = year.group(1)
-    return found
+def _guess_type(info, resultaten, velden):
+    """
+    Een gok voor het mediatype, zodat het formulier meteen op het juiste type
+    staat. Alleen een suggestie: je kan het bovenaan het formulier wijzigen.
+    """
+    if "musicbrainz" in resultaten:
+        return "cd"
+    if not info.is_isbn or not velden.get("title"):
+        return None
+    if velden.get("series") or velden.get("series_number"):
+        return "strip"
+    return "boek"
 
 
 def lookup_barcode(code):
     """
-    Zoekt een ISBN of EAN op via gratis bronnen zonder sleutel. Beide bronnen
-    worden geraadpleegd en vullen elkaar aan: Google Books heeft de betere
-    dekking voor Nederlandstalige uitgaven, Open Library voor Engelstalig werk.
-
-    Bij strips en manga zet niet elke uitgever een ISBN op de kaft; dan komt
-    er niets terug en vul je de velden zelf aan.
+    Dezelfde opzoeking, maar met enkel de velden terug. Blijft bestaan omdat
+    de import en oudere aanroepen hierop rekenen.
     """
-    code = re.sub(r"[^0-9Xx]", "", code or "")[:20]
-    if not code:
-        return {}
-
-    result = {}
-    for source in (_from_google_books, _from_open_library):
-        for key, value in source(code).items():
-            if value and not result.get(key):
-                result[key] = value
-        if result.get("title") and result.get("author"):
-            break
-
-    result = _filter_fields(result)
-    result["barcode"] = code
-    return result
+    return lookup_barcode_detailed(code)["fields"]
 
 
 # ---------------------------------------------------------------------------

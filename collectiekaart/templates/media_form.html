@@ -13,13 +13,47 @@
 {% block content %}
 <div class="panel">
   <h2>{{ 'Item wijzigen' if media else 'Item toevoegen' }}</h2>
+
+  {% if kopie_van %}
+    <p class="flash info">
+      Nieuw item op basis van <strong>{{ kopie_van.title }}</strong>. Type, reeks, auteur,
+      collectie, eigenaar, staat en je eigen velden zijn al ingevuld. Barcode, kaftfoto, waarde
+      en commentaar blijven leeg: die horen bij dat ene exemplaar. Het oorspronkelijke item
+      verandert niet.
+    </p>
+  {% endif %}
+
   <p class="muted intro">
     Het formulier toont alleen de velden die bij het gekozen type horen. Welke dat zijn, en welke
     je verplicht wil maken, stel je in bij
     <a href="{{ url_for('settings.index') }}#velden">Instellingen → Velden per type</a>.
   </p>
 
-  <form method="post" enctype="multipart/form-data" id="media-form"
+  {% if not media and not kopie_van and recent_items %}
+  <form method="get" action="{{ url_for('media.copy_form') }}" class="copy-source">
+    <label for="bron">Overnemen van een bestaand item</label>
+    <div class="search-row">
+      <select name="bron" id="bron">
+        {% for item in recent_items %}
+          <option value="{{ item.id }}">
+            {{ item.media_type.label if item.media_type else '—' }} ·
+            {% if item.series %}{{ item.series }}{% if item.series_number is not none %} {{ item.series_number | reeksnummer }}{% endif %} — {% endif %}{{ item.title }}
+          </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-outline" name="volgend" value="0">Overnemen</button>
+      <button type="submit" class="btn btn-outline" name="volgend" value="1">Volgend deel</button>
+    </div>
+    <p class="hint">
+      "Overnemen" neemt alles behalve barcode, kaftfoto, waarde en commentaar mee. "Volgend deel"
+      doet hetzelfde, telt het reeksnummer één op en laat de titel leeg. Vanaf de
+      <a href="{{ url_for('main.full_list') }}">volledige lijst</a> kan je hetzelfde doen met elk
+      item, ook een ouder.
+    </p>
+  </form>
+  {% endif %}
+
+  <form method="post" action="{{ form_action }}" enctype="multipart/form-data" id="media-form"
         data-config='{{ field_config | tojson }}'>
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <input type="hidden" name="cover_image" value="{{ prefill.get('cover_image', '') }}">
@@ -39,8 +73,7 @@
 
         <div class="form-field">
           <label for="title">Titel <span class="req">verplicht</span></label>
-          <input type="text" name="title" id="title" required
-                 value="{{ media.title if media else prefill.get('title', '') }}">
+          <input type="text" name="title" id="title" required value="{{ values.title }}">
         </div>
 
         {% call(verplicht) veld('owner_id') %}
@@ -48,56 +81,52 @@
           <select name="owner_id" id="owner_id">
             <option value="">—</option>
             {% for o in owners %}
-              <option value="{{ o.id }}" {% if media and media.owner_id == o.id %}selected{% endif %}>{{ o.name }}</option>
+              <option value="{{ o.id }}" {% if values.owner_id == o.id|string %}selected{% endif %}>{{ o.name }}</option>
             {% endfor %}
           </select>
         {% endcall %}
 
         {% call(verplicht) veld('author') %}
           <label for="author">Auteur / tekenaar {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <input type="text" name="author" id="author"
-                 value="{{ media.author if media and media.author else prefill.get('author', '') }}">
+          <input type="text" name="author" id="author" value="{{ values.author }}">
         {% endcall %}
 
         {% call(verplicht) veld('musician') %}
           <label for="musician">Muzikant {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <input type="text" name="musician" id="musician"
-                 value="{{ media.musician if media and media.musician else prefill.get('musician', '') }}">
+          <input type="text" name="musician" id="musician" value="{{ values.musician }}">
         {% endcall %}
 
         {% call(verplicht) veld('series') %}
           <label for="series">Reeks {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <input type="text" name="series" id="series"
-                 value="{{ media.series if media and media.series else prefill.get('series', '') }}">
+          <input type="text" name="series" id="series" value="{{ values.series }}">
         {% endcall %}
 
         {% call(verplicht) veld('series_number') %}
           <label for="series_number">Nummer in de reeks {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
           <input type="number" step="0.5" min="0" name="series_number" id="series_number"
-                 value="{{ media.series_number | reeksnummer if media and media.series_number is not none else prefill.get('series_number', '') }}">
+                 value="{{ values.series_number }}">
         {% endcall %}
 
         {% call(verplicht) veld('collection') %}
           <label for="collection">Collectie {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <input type="text" name="collection" id="collection" value="{{ media.collection if media and media.collection else '' }}">
+          <input type="text" name="collection" id="collection" value="{{ values.collection }}">
         {% endcall %}
 
         {% call(verplicht) veld('collection_number') %}
           <label for="collection_number">Nummer in de collectie {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
           <input type="number" min="0" name="collection_number" id="collection_number"
-                 value="{{ media.collection_number if media and media.collection_number is not none else '' }}">
+                 value="{{ values.collection_number }}">
         {% endcall %}
 
         {% call(verplicht) veld('print_number') %}
           <label for="print_number">Nummer van de druk {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
           <input type="number" min="0" name="print_number" id="print_number"
-                 value="{{ media.print_number if media and media.print_number is not none else '' }}">
+                 value="{{ values.print_number }}">
         {% endcall %}
 
         {% call(verplicht) veld('year') %}
           <label for="year">Jaar {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <input type="number" min="0" max="2200" name="year" id="year"
-                 value="{{ media.year if media and media.year is not none else prefill.get('year', '') }}">
+          <input type="number" min="0" max="2200" name="year" id="year" value="{{ values.year }}">
         {% endcall %}
 
         {% call(verplicht) veld('condition') %}
@@ -105,34 +134,33 @@
           <select name="condition" id="condition">
             <option value="">—</option>
             {% for c in conditions %}
-              <option value="{{ c }}" {% if media and media.condition == c %}selected{% endif %}>{{ c }}</option>
+              <option value="{{ c }}" {% if values.condition == c %}selected{% endif %}>{{ c }}</option>
             {% endfor %}
           </select>
         {% endcall %}
 
         {% call(verplicht) veld('audio_language') %}
           <label for="audio_language">Taal audio {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <input type="text" name="audio_language" id="audio_language" value="{{ media.audio_language if media and media.audio_language else '' }}">
+          <input type="text" name="audio_language" id="audio_language" value="{{ values.audio_language }}">
         {% endcall %}
 
         {% call(verplicht) veld('subtitle_language') %}
           <label for="subtitle_language">Taal ondertiteling {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <input type="text" name="subtitle_language" id="subtitle_language" value="{{ media.subtitle_language if media and media.subtitle_language else '' }}">
+          <input type="text" name="subtitle_language" id="subtitle_language" value="{{ values.subtitle_language }}">
         {% endcall %}
 
         {% call(verplicht) veld('barcode') %}
           <label for="barcode">Barcode {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <input type="text" name="barcode" id="barcode" class="mono"
-                 value="{{ media.barcode if media and media.barcode else prefill.get('barcode', '') }}">
+          <input type="text" name="barcode" id="barcode" class="mono" value="{{ values.barcode }}">
         {% endcall %}
 
         {% call(verplicht) veld('is_hardcover', 'checkbox') %}
-          <input type="checkbox" name="is_hardcover" id="is_hardcover" {% if media and media.is_hardcover %}checked{% endif %}>
+          <input type="checkbox" name="is_hardcover" id="is_hardcover" {% if values.is_hardcover %}checked{% endif %}>
           <label for="is_hardcover">Hardcover</label>
         {% endcall %}
 
         {% call(verplicht) veld('is_duplicate', 'checkbox') %}
-          <input type="checkbox" name="is_duplicate" id="is_duplicate" {% if media and media.is_duplicate %}checked{% endif %}>
+          <input type="checkbox" name="is_duplicate" id="is_duplicate" {% if values.is_duplicate %}checked{% endif %}>
           <label for="is_duplicate">Dubbel exemplaar</label>
         {% endcall %}
 
@@ -153,18 +181,18 @@
       <legend>Eigen velden</legend>
       <div class="form-grid">
         {% for f in custom_fields %}
-          {% set current_value = (media.custom_fields or {}).get(f.key) if media else None %}
           <div class="form-field {{ 'checkbox' if f.field_type == 'checkbox' }}"
                data-custom-field="cf_{{ f.key }}"
                {{ 'hidden' if current_type and f.media_type_id not in (none, current_type.id) }}>
             {% if f.field_type == 'checkbox' %}
-              <input type="checkbox" name="cf_{{ f.key }}" id="cf_{{ f.key }}" {% if current_value %}checked{% endif %}>
+              <input type="checkbox" name="cf_{{ f.key }}" id="cf_{{ f.key }}"
+                     {% if values.get('cf_' ~ f.key) %}checked{% endif %}>
               <label for="cf_{{ f.key }}">{{ f.label }}</label>
             {% else %}
               <label for="cf_{{ f.key }}">{{ f.label }}{% if f.required %} <span class="req">verplicht</span>{% endif %}</label>
               <input type="{{ 'number' if f.field_type == 'number' else 'text' }}"
                      name="cf_{{ f.key }}" id="cf_{{ f.key }}"
-                     value="{{ current_value if current_value is not none else '' }}">
+                     value="{{ values.get('cf_' ~ f.key, '') }}">
             {% endif %}
           </div>
         {% endfor %}
@@ -179,7 +207,7 @@
           <label for="estimated_value">Geschatte waarde in euro {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
           <div class="search-row">
             <input type="text" inputmode="decimal" name="estimated_value" id="estimated_value"
-                   value="{{ media.estimated_value if media and media.estimated_value is not none else '' }}">
+                   value="{{ values.estimated_value }}">
             <button type="button" class="btn btn-outline" id="value-lookup-btn"
                     data-url="{{ url_for('analysis.value_lookup') }}">Zoek richtprijs</button>
           </div>
@@ -190,7 +218,7 @@
 
         {% call(verplicht) veld('comment', 'wide') %}
           <label for="comment">Commentaar {% if verplicht %}<span class="req">verplicht</span>{% endif %}</label>
-          <textarea name="comment" id="comment" rows="3">{{ media.comment if media and media.comment else '' }}</textarea>
+          <textarea name="comment" id="comment" rows="3">{{ values.comment }}</textarea>
         {% endcall %}
       </div>
     </fieldset>
@@ -198,6 +226,10 @@
     <div class="form-actions">
       <button type="submit" class="btn-accent">{{ 'Wijzigingen opslaan' if media else 'Item toevoegen' }}</button>
       <a href="{{ url_for('main.index') }}" class="btn btn-outline">Annuleren</a>
+      {% if media %}
+        <a class="btn btn-outline" href="{{ url_for('media.copy_form', bron=media.id) }}">Nieuw op basis hiervan</a>
+        <a class="btn btn-outline" href="{{ url_for('media.copy_form', bron=media.id, volgend=1) }}">Volgend deel</a>
+      {% endif %}
     </div>
   </form>
 </div>

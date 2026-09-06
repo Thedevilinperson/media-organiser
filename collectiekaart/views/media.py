@@ -1,21 +1,129 @@
-"""Ingave en beheer van media: manueel, via barcode en via foto."""
+"""Ingave en beheer van media: manueel, via barcode, via foto en via een kopie."""
 import os
+import re
 
 from flask import (
     Blueprint, current_app, flash, jsonify, redirect,
     render_template, request, url_for,
 )
+from sqlalchemy import func
 
 from extensions import db
 from models import CONDITIONS, CustomField, FIELD_LABELS, Media, MediaType, Owner, get_setting
 from security import allowed_image, clean_text, safe_float, safe_int, unique_filename
 from services.images import save_cover
-from services.lookups import ALLOWED_LOOKUP_FIELDS, analyze_cover_ai, analyze_cover_ocr, lookup_barcode
+from services.lookups import (
+    ALLOWED_LOOKUP_FIELDS, analyze_cover_ai, analyze_cover_ocr, lookup_barcode_detailed,
+)
 
 media_bp = Blueprint("media", __name__, url_prefix="/media")
 
+# Bestandsnamen van kaftfoto's worden door unique_filename() opgebouwd uit een
+# willekeurig token plus een gecontroleerde extensie. Wat via het formulier
+# terugkomt, moet exact dat patroon volgen; anders zou er een willekeurig pad
+# ingesmokkeld kunnen worden (zie SECURITY.md, bevinding B4).
+COVER_NAME_RE = re.compile(r"^[0-9a-f]{24}\.(jpg|jpeg|png|webp)$", re.I)
 
-def _form_context(media=None, prefill=None):
+# Velden die overgenomen worden als je een nieuw item op een bestaand item
+# baseert. Barcode, kaftfoto, waarde en commentaar horen bij dát ene exemplaar
+# en worden bewust niet meegekopieerd.
+COPY_FIELDS = (
+    "owner_id", "series", "series_number", "author", "musician",
+    "collection", "collection_number", "print_number", "condition",
+    "year", "audio_language", "subtitle_language",
+    "is_hardcover", "is_duplicate",
+)
+
+# Alles wat op het formulier ingevuld kan worden, met het soort waarde. Wordt
+# gebruikt om één set beginwaarden op te bouwen, of die nu van een bestaand
+# item komt, van een barcode, van een foto of van een kopie.
+FORM_FIELDS = {
+    "title": "text",
+    "owner_id": "int",
+    "series": "text",
+    "series_number": "number",
+    "author": "text",
+    "musician": "text",
+    "collection": "text",
+    "collection_number": "int",
+    "print_number": "int",
+    "year": "int",
+    "condition": "text",
+    "audio_language": "text",
+    "subtitle_language": "text",
+    "barcode": "text",
+    "estimated_value": "number",
+    "comment": "text",
+    "is_hardcover": "bool",
+    "is_duplicate": "bool",
+}
+
+
+def _leeg(waarde):
+    """
+    Of een waarde als 'niet ingevuld' geldt. Bewust niet met `in (None, "",
+    False)`: in Python is 0 == False, waardoor een geschatte waarde van 0 of
+    een reeksnummer 0 anders ten onrechte als leeg gold.
+    """
+    if waarde is None:
+        return True
+    if isinstance(waarde, bool):
+        return waarde is False
+    if isinstance(waarde, str):
+        return waarde.strip() == ""
+    return False
+
+
+def _as_text(value, soort):
+    """Zet een waarde om naar wat er in een invoerveld hoort te staan."""
+    if value is None or value == "":
+        return "" if soort != "bool" else False
+    if soort == "bool":
+        return value is True or str(value).lower() in ("1", "true", "on", "ja", "yes")
+    if soort == "number":
+        number = safe_float(value)
+        if number is None:
+            return ""
+        return str(int(number)) if float(number).is_integer() else str(number)
+    if soort == "int":
+        number = safe_int(value)
+        return "" if number is None else str(number)
+    return str(value)
+
+
+def _field_values(media, prefill, custom_fields):
+    """
+    Eén set beginwaarden voor het formulier.
+
+    Vroeger las het sjabloon voor sommige velden uit het item en voor andere
+    uit de querystring, waardoor een deel van de gegevens bij het toevoegen
+    verloren ging. Nu wordt alles hier samengevoegd: een bestaand item wint,
+    en anders geldt wat er als voorinvulling meekwam.
+    """
+    values = {}
+    for key, soort in FORM_FIELDS.items():
+        waarde = getattr(media, key, None) if media is not None else None
+        if _leeg(waarde):
+            waarde = prefill.get(key) if prefill else None
+        values[key] = _as_text(waarde, soort)
+
+    eigen = dict((media.custom_fields or {}) if media is not None else {})
+    for field in custom_fields:
+        sleutel = f"cf_{field.key}"
+        waarde = eigen.get(field.key)
+        if _leeg(waarde) and prefill:
+            waarde = prefill.get(sleutel)
+        if field.field_type == "checkbox":
+            values[sleutel] = _as_text(waarde, "bool")
+        elif field.field_type == "number":
+            values[sleutel] = _as_text(waarde, "number")
+        else:
+            values[sleutel] = _as_text(waarde, "text")
+    return values
+
+
+def _form_context(media=None, prefill=None, action=None, kopie_van=None):
+    prefill = prefill or {}
     media_types = db.session.query(MediaType).order_by(MediaType.label).all()
     custom_fields = db.session.query(CustomField).order_by(CustomField.label).all()
 
@@ -38,14 +146,17 @@ def _form_context(media=None, prefill=None):
     selected = None
     if media is not None and media.media_type:
         selected = media.media_type
-    elif prefill and prefill.get("media_type"):
+    elif prefill.get("media_type"):
         selected = next((t for t in media_types if t.code == prefill["media_type"]), None)
     if selected is None and media_types:
         selected = media_types[0]
 
     return {
         "media": media,
-        "prefill": prefill or {},
+        "prefill": prefill,
+        "values": _field_values(media, prefill, custom_fields),
+        "form_action": action or url_for("media.add"),
+        "kopie_van": kopie_van,
         "media_types": media_types,
         "owners": db.session.query(Owner).order_by(Owner.name).all(),
         "conditions": CONDITIONS,
@@ -53,7 +164,20 @@ def _form_context(media=None, prefill=None):
         "field_config": config,
         "current": selected.field_settings() if selected else {},
         "current_type": selected,
+        # Voor de keuzelijst "nieuw op basis van een bestaand item". Alleen bij
+        # het toevoegen nodig, en begrensd zodat een grote collectie de pagina
+        # niet log maakt.
+        "recent_items": _recent_items() if media is None else [],
     }
+
+
+def _recent_items(limit=200):
+    return (
+        db.session.query(Media)
+        .order_by(Media.id.desc())
+        .limit(limit)
+        .all()
+    )
 
 
 def _apply_form(media, form):
@@ -183,23 +307,82 @@ def add():
 
     # Vanuit barcode of foto komen velden mee via de querystring; enkel
     # bekende velden worden overgenomen.
-    prefill = {k: v for k, v in request.args.items() if k in ALLOWED_LOOKUP_FIELDS | {"media_type", "cover_image"}}
+    toegelaten = ALLOWED_LOOKUP_FIELDS | {"media_type", "cover_image"}
+    prefill = {k: v for k, v in request.args.items() if k in toegelaten}
     return render_template("media_form.html", **_form_context(prefill=prefill))
 
 
 @media_bp.route("/<int:media_id>/edit", methods=["GET", "POST"])
 def edit(media_id):
     media = db.get_or_404(Media, media_id)
+    actie = url_for("media.edit", media_id=media.id)
     if request.method == "POST":
         error = _apply_form(media, request.form)
         if error:
             flash(error, "error")
-            return render_template("media_form.html", **_form_context(media=media))
+            return render_template("media_form.html", **_form_context(media=media, action=actie))
         _handle_cover(media)
         db.session.commit()
         flash("Wijzigingen opgeslagen.", "success")
         return redirect(url_for("main.index"))
-    return render_template("media_form.html", **_form_context(media=media))
+    return render_template("media_form.html", **_form_context(media=media, action=actie))
+
+
+# ---------------------------------------------------------------------------
+# Nieuw item op basis van een bestaand item
+# ---------------------------------------------------------------------------
+@media_bp.route("/kopie")
+def copy_form():
+    """
+    Toont een leeg toevoegformulier dat al ingevuld is met de gegevens van een
+    bestaand item. Handig bij een reeks: type, reeks, auteur, collectie,
+    eigenaar, staat en je eigen velden staan meteen goed, en je vult alleen
+    nog de titel en het nummer aan.
+
+    Met `volgend=1` wordt het ook nog een stap slimmer: het reeksnummer gaat
+    één omhoog en de titel blijft leeg, want het volgende album heeft
+    doorgaans een andere titel.
+
+    Het item zelf wordt hier niet aangeraakt: dit is en blijft een GET, en pas
+    het formulier eronder maakt via /media/add een nieuw item aan.
+    """
+    bron_id = safe_int(request.args.get("bron"))
+    bron = db.session.get(Media, bron_id) if bron_id else None
+    if bron is None:
+        flash("Kies eerst een bestaand item om van te vertrekken.", "error")
+        return redirect(url_for("media.add"))
+
+    volgend = request.args.get("volgend") in ("1", "on", "true", "ja")
+    prefill = _prefill_from_media(bron, volgend=volgend)
+    return render_template(
+        "media_form.html",
+        **_form_context(prefill=prefill, action=url_for("media.add"), kopie_van=bron),
+    )
+
+
+def _prefill_from_media(bron, volgend=False):
+    prefill = {"media_type": bron.media_type.code if bron.media_type else ""}
+    for key in COPY_FIELDS:
+        waarde = getattr(bron, key, None)
+        if not _leeg(waarde):
+            prefill[key] = waarde
+    prefill["title"] = bron.title or ""
+
+    for sleutel, waarde in (bron.custom_fields or {}).items():
+        if not _leeg(waarde):
+            prefill[f"cf_{sleutel}"] = waarde
+
+    if volgend:
+        # Het volgende deel heeft een eigen titel; die laten we leeg zodat je
+        # er niet per ongeluk twee keer dezelfde titel op zet.
+        prefill["title"] = ""
+        nummer = bron.series_number
+        if nummer is not None:
+            # Een special als 3.5 wordt gevolgd door 4, niet door 4.5.
+            prefill["series_number"] = str(int(nummer) + 1)
+        if bron.collection_number is not None:
+            prefill["collection_number"] = str(bron.collection_number + 1)
+    return prefill
 
 
 @media_bp.route("/<int:media_id>/delete", methods=["POST"])
@@ -226,7 +409,63 @@ def scan():
 
 @media_bp.route("/api/barcode/<code>")
 def api_barcode(code):
-    return jsonify(lookup_barcode(code[:40]))
+    """
+    Zoekt de code op bij alle externe bronnen en vult daarna aan met wat je
+    zelf al in huis hebt. Die laatste stap kost niets en helpt net bij strips,
+    waar de catalogi de reeks zelden invullen.
+    """
+    resultaat = lookup_barcode_detailed(code[:40])
+    resultaat["fields"], resultaat["from_collection"] = _enrich_from_collection(resultaat["fields"])
+    if resultaat["from_collection"]:
+        resultaat["found"] = True
+    return jsonify(resultaat)
+
+
+def _enrich_from_collection(velden):
+    """
+    Vult reeks, nummer, auteur en collectie aan vanuit je eigen collectie.
+
+    Vindt een catalogus wel de titel maar niet de reeks — bij stripalbums is
+    dat eerder regel dan uitzondering — dan levert je eigen databank het
+    antwoord vaak alsnog: staat er al een album van "De Kiekeboes" in, en komt
+    die naam in de gevonden titel voor, dan is de reeks meteen bekend. Alles
+    lokaal, zonder één extra netwerkaanvraag.
+    """
+    aangevuld = []
+    titel = (velden.get("title") or "").strip()
+
+    if titel and not velden.get("series"):
+        bekende = [naam for (naam,) in db.session.query(Media.series)
+                   .filter(Media.series.isnot(None), Media.series != "").distinct()]
+        # Langste naam eerst: "Suske en Wiske Klassiek" gaat voor "Suske en Wiske".
+        for reeks in sorted(bekende, key=len, reverse=True):
+            if len(reeks) > 3 and reeks.lower() in titel.lower():
+                velden["series"] = reeks
+                aangevuld.append("reeks")
+                if not velden.get("series_number"):
+                    rest = re.sub(re.escape(reeks), " ", titel, flags=re.I)
+                    nummer = re.search(r"\b(\d{1,3})\b", rest)
+                    if nummer:
+                        velden["series_number"] = nummer.group(1)
+                        aangevuld.append("nummer")
+                break
+
+    if velden.get("series"):
+        buur = (
+            db.session.query(Media)
+            .filter(func.lower(Media.series) == velden["series"].lower())
+            .order_by(Media.id.desc())
+            .first()
+        )
+        if buur is not None:
+            if not velden.get("author") and buur.author:
+                velden["author"] = buur.author
+                aangevuld.append("auteur")
+            if not velden.get("collection") and buur.collection:
+                velden["collection"] = buur.collection
+                aangevuld.append("collectie")
+
+    return velden, aangevuld
 
 
 # ---------------------------------------------------------------------------
@@ -264,5 +503,6 @@ def photo():
         method = "ocr"
 
     fields = dict(result.get("fields") or {})
+    fields, _ = _enrich_from_collection(fields)
     fields["cover_image"] = name
     return render_template("photo_add.html", result=result, fields=fields, method=method)

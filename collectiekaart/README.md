@@ -15,8 +15,9 @@ Assistant, en is bruikbaar op een smartphone.
   velden, plus de vier keuzelijsten (type, eigenaar, reeks, titel) die elkaars
   inhoud beperken tot wat nog mogelijk is, en de knoppen om te wijzigen of te
   verwijderen.
-- **Drie manieren van ingeven**: manueel, met de camera via een barcode, of door
-  een foto van de kaft te laten analyseren.
+- **Vier manieren van ingeven**: manueel, met de camera via een barcode, door een
+  foto van de kaft te laten analyseren, of door te vertrekken van een item dat je
+  al hebt ("Overnemen" en "Volgend deel").
 - **Reeksanalyse**: welke nummers ontbreken in je reeksen, en zijn er nummers
   verschenen die je nog niet hebt.
 - **Waarde**: totaal per type, met een waarde die je per item meteen kan invullen en een poging
@@ -38,6 +39,21 @@ kaft lezen met Tesseract; dat zit ingebouwd en levert een ruwe gok op die je zel
 corrigeert. Wil je meer, dan is er de optionele AI-sleutel bij Instellingen. Die
 mag ook naar een LLM wijzen die je zelf thuis draait: vul bij "Eigen AI-adres"
 het adres van je eigen model in en er verlaat niets je netwerk.
+
+**Een barcode opzoeken.** Zeven catalogi worden parallel bevraagd, allemaal
+gratis en zonder sleutel: Google Books, Open Library, de Koninklijke Bibliotheek
+(GGC, via SRU), Wikidata, de Bibliothèque nationale de France, openBD en
+MusicBrainz. Elk dekt een ander gat. De KB is de Nederlandse nationale
+bibliografie en beschrijft zowat elke uitgave die hier met een ISBN verscheen,
+stripalbums inbegrepen; Wikidata is de enige bron die bij een stripalbum vaak
+reeks én nummer kent; MusicBrainz vangt de EAN-codes van cd's en dvd's op, die in
+geen enkele boekencatalogus staan. Bij Google Books wordt uitdrukkelijk een land
+meegegeven, anders weigert die API een aanvraag die van een server komt. Wat er
+dan nog ontbreekt, wordt aangevuld vanuit je eigen collectie: herkent de app een
+reeks die je al hebt in de gevonden titel, dan vult ze reeks, nummer, auteur en
+collectie zelf in. Sites zonder open interface (Stripinfo, LastDodo,
+Boekwinkeltjes) worden niet geschraapt; die geven een zoeklink. Details en de
+volledige afweging staan in `services/barcode_sources.py`.
 
 **Nieuwe nummers opsporen via De Poort.** Dit gebeurt door hun zoekpagina uit te
 lezen, dus zonder AI, gratis en vanaf je eigen toestel. Het is wel afhankelijk
@@ -138,7 +154,8 @@ collectiekaart_v0.1/
     │   ├── lending.py           uitleen
     │   └── settings.py          instellingen en import
     ├── services/                logica en externe koppelingen
-    │   ├── lookups.py           barcode en foto-analyse
+    │   ├── lookups.py           opzoeken bij barcode en foto-analyse
+    │   ├── barcode_sources.py   de zeven catalogi achter het scannen
     │   ├── series_analysis.py   ontbrekende en nieuwe nummers
     │   ├── value_estimation.py  richtprijs
     │   ├── importer.py          Excel-import
@@ -161,6 +178,10 @@ collectiekaart_v0.1/
 - Het overzicht haalt zijn gegevens in één query op met eager loading, in plaats
   van een aparte query per rij.
 - Een achtergrondtaak controleert één keer per dag op te lang uitgeleende media.
+- De zeven barcodebronnen worden parallel bevraagd met een gezamenlijke
+  tijdslimiet, en het resultaat wordt kort in het geheugen bewaard. Zeven
+  catalogi na elkaar aanspreken duurt op een Raspberry Pi al snel een halve
+  minuut; samen blijft het onder de vijftien seconden.
 - Zie `SECURITY.md` voor de screening op kwetsbaarheden.
 
 ## Back-up

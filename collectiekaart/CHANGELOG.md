@@ -1,5 +1,90 @@
 # Wijzigingen
 
+## 0.1.13
+
+**Een gescande barcode leverde meestal niets op.**
+
+- Daar bleken vier oorzaken voor te zijn, die nu alle vier aangepakt zijn.
+- *Ten eerste, en waarschijnlijk het belangrijkst:* de Google Books API
+  weigert een aanvraag die van een server komt — een Raspberry Pi thuis, een
+  container in Home Assistant — als het land niet meegegeven wordt. Ze
+  antwoordt dan met status 403 en de melding dat ze de locatie van de
+  gebruiker niet kan bepalen. De app las dat als "niets gevonden", terwijl het
+  boek er wel degelijk in stond. Het land wordt nu expliciet meegestuurd
+  (België eerst, dan Nederland, dan zonder).
+- *Ten tweede:* er werd alleen op de gescande vorm van het ISBN gezocht. Veel
+  catalogi kennen een uitgave enkel onder haar ISBN-10, andere enkel onder het
+  ISBN-13. Beide vormen worden nu berekend en allebei geprobeerd.
+- *Ten derde:* een cd of dvd draagt geen ISBN maar een gewone EAN. Die staat in
+  geen enkele boekencatalogus, dus zo'n scan kon per definitie niets opleveren.
+- *Ten vierde:* twee bronnen, allebei sterk in Engelstalig werk, dekken het
+  Nederlandstalige aanbod slecht — en stripalbums nog een stuk slechter.
+
+**Van twee bronnen naar zeven, plus je eigen collectie.**
+
+- Nieuw: de **Koninklijke Bibliotheek** (de Nederlandse nationale bibliografie,
+  via hun open SRU-interface op de GGC). Zowat elke uitgave die in Nederland of
+  Vlaanderen met een ISBN verscheen staat daarin, stripalbums inbegrepen.
+- Nieuw: **Wikidata**. De enige bron die bij een stripalbum vaak zowel de reeks
+  als het nummer daarin kent — net de twee velden die de boekencatalogi laten
+  liggen en die je bij een strip het hardst nodig hebt.
+- Nieuw: de **Bibliothèque nationale de France**, voor Franstalige albums en
+  voor vertalingen waarvan de Nederlandse uitgave nergens beschreven staat.
+- Nieuw: **openBD**, voor Japanse uitgaven (manga in het origineel).
+- Nieuw: **MusicBrainz**, voor de EAN-codes van cd's en dvd's.
+- **Google Books** en **Open Library** blijven, maar worden grondiger bevraagd:
+  Open Library via drie ingangen (`/api/books`, `/isbn/` en `search.json`) in
+  plaats van één.
+- De zeven bronnen worden parallel bevraagd in plaats van na elkaar, met een
+  gezamenlijke tijdslimiet. Zeven catalogi na elkaar aanspreken duurt op een
+  Raspberry Pi al snel een halve minuut; samen blijft het onder de vijftien
+  seconden. Valt één bron weg of is ze traag, dan tellen de andere gewoon door.
+- Per veld wint de bron die voor dat taalgebied het meest betrouwbaar is: bij
+  een Nederlands ISBN (978-90 of 978-94) de KB, bij een Frans de BnF, bij een
+  Japans openBD. Reeks en nummer komen bij voorkeur van Wikidata.
+- Voor sites zonder open interface (Stripinfo, LastDodo, Boekwinkeltjes) wordt
+  er niets geschraapt. Levert het opzoeken niets op, dan verschijnen er
+  zoeklinks — dezelfde bewuste keuze als bij de richtprijs.
+
+**Aanvullen met wat je zelf al hebt.**
+
+- Vindt een catalogus wel de titel maar niet de reeks, dan kijkt de app in je
+  eigen collectie. Staat er al een album van "De Kiekeboes" in en komt die naam
+  in de gevonden titel voor, dan zijn reeks, nummer, auteur en collectie meteen
+  ingevuld. Dat kost geen enkele extra netwerkaanvraag en werkt ook offline.
+- Staat de reeks nog verstopt in de titel ("De Kiekeboes 12 - Het witte
+  bloed"), dan wordt ze er alsnog uitgehaald, samen met het nummer.
+- De scanpagina toont voortaan welke bronnen iets opleverden en welke niet, en
+  gebruikt Nederlandse veldnamen in plaats van de interne sleutels.
+- Het mediatype wordt gegokt op basis van de bron: een treffer bij MusicBrainz
+  zet het formulier op "CD", een ISBN met reeksnummer op "Strip". Je kan het
+  bovenaan het formulier gewoon wijzigen.
+
+**Een nieuw item op basis van een eerdere invoer.**
+
+- Bovenaan "Toevoegen" staat een keuzelijst met wat je onlangs invoerde, met
+  twee knoppen. "Overnemen" vult type, reeks, nummer, auteur, muzikant,
+  collectie, druk, eigenaar, staat, jaar, talen, hardcover, dubbel én je eigen
+  velden alvast in. "Volgend deel" doet hetzelfde, telt het reeksnummer één op
+  en laat de titel leeg — precies wat je nodig hebt bij het volgende album van
+  een reeks.
+- Barcode, kaftfoto, waarde en commentaar worden bewust níét meegekopieerd:
+  die horen bij dat ene exemplaar.
+- Dezelfde twee knoppen staan op elk wijzigingsformulier, en er staat een knop
+  "Kopie" bij elke rij op de volledige lijst. Het oorspronkelijke item wordt
+  daarbij nooit aangeraakt.
+
+**Twee fouten die daarbij naar boven kwamen.**
+
+- Bij het opslaan van een item met een kaftfoto uit de foto-analyse liep de app
+  op een `NameError`: de controle op de bestandsnaam gebruikte een patroon dat
+  nergens gedefinieerd stond. Het patroon staat er nu, en controleert dat de
+  naam exact de vorm heeft die de app zelf aanmaakt.
+- Het invulformulier las voor sommige velden uit het item en voor andere uit de
+  querystring. Kwam je van een barcode of een foto, dan werden collectie,
+  staat, talen en je eigen velden genegeerd, ook al waren ze gevonden. Alle
+  beginwaarden worden nu op één plaats samengevoegd.
+
 ## 0.1.12
 
 - De kolom "Nieuw bij De Poort" op de reeksenpagina leek te ontbreken zodra

@@ -579,3 +579,36 @@ table.data-table.compact td a:hover { text-decoration: underline; }
   .field-table { max-width: none; }
   .field-table th.col-check, .field-table td.col-check { width: 64px; }
 }
+
+/* ---------- Nieuw item op basis van een bestaand item ---------- */
+/* Staat bovenaan het toevoegformulier: een keuzelijst met wat je onlangs
+   invoerde, en twee knoppen om die gegevens over te nemen. Bewust ingekaderd,
+   zodat het duidelijk losstaat van het formulier eronder. */
+.copy-source {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: var(--paper);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin: 0 0 18px;
+}
+
+.copy-source > label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.copy-source .search-row select { flex: 1 1 240px; min-width: 0; }
+
+.copy-source .hint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 8px 0 0;
+}
+
+@media (max-width: 700px) {
+  .copy-source .search-row { flex-wrap: wrap; }
+  .copy-source .search-row select { flex: 1 1 100%; }
+}

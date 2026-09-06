@@ -157,6 +157,8 @@
           </td>
           <td data-label="" class="row-actions">
             <a class="btn btn-outline btn-small" href="{{ url_for('media.edit', media_id=m.id) }}">Wijzigen</a>
+            <a class="btn btn-outline btn-small" href="{{ url_for('media.copy_form', bron=m.id) }}"
+               title="Nieuw item met dezelfde gegevens">Kopie</a>
             <form method="post" action="{{ url_for('media.delete', media_id=m.id) }}"
                   data-confirm="'{{ m.title }}' verwijderen?">
               <input type="hidden" name="_csrf" value="{{ csrf_token() }}">

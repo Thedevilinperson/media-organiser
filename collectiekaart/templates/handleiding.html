@@ -9,6 +9,7 @@
     <li><a href="#overzicht">Het overzicht</a></li>
     <li><a href="#lijst">De volledige lijst</a></li>
     <li><a href="#toevoegen">Items toevoegen</a></li>
+    <li><a href="#kopie">Nieuw op basis van een bestaand item</a></li>
     <li><a href="#scannen">Barcode scannen</a></li>
     <li><a href="#foto">Foto van de kaft</a></li>
     <li><a href="#reeksen">Reeksen aanvullen</a></li>
@@ -65,15 +66,77 @@
     <code>3.5</code>. De reeksanalyse rekent zo'n special niet mee als ontbrekend nummer.
   </p>
 
+  <h3 id="kopie">Nieuw op basis van een bestaand item</h3>
+  <p>
+    Voeg je een album toe van een reeks die je al hebt, dan hoef je type, reeks, auteur,
+    collectie, eigenaar en staat niet opnieuw in te tikken. Bovenaan
+    <a href="{{ url_for('media.add') }}">Toevoegen</a> staat een keuzelijst met de items die je
+    het laatst invoerde, met twee knoppen ernaast.
+  </p>
+  <p>
+    <strong>Overnemen</strong> vult alles in wat bij dat item hoort: type, reeks en nummer,
+    auteur of muzikant, collectie en nummer in de collectie, druk, eigenaar, staat, jaar, de twee
+    talen, hardcover, dubbel exemplaar en je eigen velden. Alleen de titel pas je nog aan.
+  </p>
+  <p>
+    <strong>Volgend deel</strong> doet hetzelfde, maar telt het reeksnummer één op en laat de
+    titel leeg. Een special op 3.5 wordt gevolgd door 4, niet door 4.5. Dat is de snelste manier
+    om het volgende album van een reeks in te voeren.
+  </p>
+  <p>
+    Barcode, kaftfoto, waarde en commentaar worden bewust niet meegekopieerd: die horen bij dat
+    ene exemplaar en zijn bij het volgende album anders. Het item waarvan je vertrekt, verandert
+    nooit; je maakt altijd een nieuw item aan.
+  </p>
+  <p>
+    Wil je vertrekken van een ouder item dat niet meer in de keuzelijst staat, gebruik dan de
+    knop "Kopie" in de rij van dat item op de <a href="{{ url_for('main.full_list') }}">volledige
+    lijst</a>. Dezelfde twee knoppen staan ook onderaan elk wijzigingsformulier.
+  </p>
+
   <h3 id="scannen">Barcode scannen</h3>
   <p>
     Open <a href="{{ url_for('media.scan') }}">Scannen</a> op je telefoon en richt de camera op de
-    streepjescode. De titel, auteur en het jaar worden opgezocht bij Open Library en Google Books.
-    Beide zijn gratis en vragen geen sleutel.
+    streepjescode. De app bevraagt daarna zeven catalogi tegelijk. Allemaal gratis, allemaal
+    zonder sleutel of account:
+  </p>
+  <ul>
+    <li><strong>Google Books</strong> — breed, ook veel Nederlandse handelsuitgaven.</li>
+    <li><strong>Open Library</strong> — sterk in Engelstalig werk, langs drie ingangen.</li>
+    <li><strong>Koninklijke Bibliotheek (GGC)</strong> — de Nederlandse nationale bibliografie.
+      Zowat elke uitgave die in Nederland of Vlaanderen met een ISBN verscheen staat erin,
+      stripalbums inbegrepen. Dit is meestal de bron die het antwoord levert.</li>
+    <li><strong>Wikidata</strong> — de enige bron die bij een stripalbum vaak zowel de reeks als
+      het nummer daarin kent.</li>
+    <li><strong>Bibliothèque nationale de France</strong> — voor Franstalige albums en voor
+      vertalingen waarvan de Nederlandse uitgave nergens beschreven staat.</li>
+    <li><strong>openBD</strong> — Japanse uitgaven, voor manga in het origineel.</li>
+    <li><strong>MusicBrainz</strong> — voor cd's en dvd's, die geen ISBN dragen maar een gewone
+      EAN.</li>
+  </ul>
+  <p>
+    Ze worden naast elkaar bevraagd in plaats van na elkaar, met een gezamenlijke tijdslimiet van
+    een vijftiental seconden. Ligt er één plat of antwoordt ze traag, dan tellen de andere gewoon
+    door. Per veld wint de bron die voor dat taalgebied het meest betrouwbaar is: bij een
+    Nederlands ISBN (dat begint met 978-90 of 978-94) de Koninklijke Bibliotheek, bij een Frans de
+    BnF, bij een Japans openBD.
   </p>
   <p>
-    Boeken hebben bijna altijd een ISBN en worden dus meestal gevonden. Bij strips en manga zet
-    niet elke uitgever een ISBN op de kaft; dan vul je de velden zelf aan.
+    Daarna kijkt de app nog in je eigen collectie. Vindt een catalogus wel de titel maar niet de
+    reeks — bij stripalbums eerder regel dan uitzondering — en staat er al een album van "De
+    Kiekeboes" in je lijst, dan herkent de app die naam in de titel en vult ze reeks, nummer,
+    auteur en collectie zelf in. Dat kost geen enkele extra aanvraag.
+  </p>
+  <p>
+    Onderaan het resultaat zie je welke bronnen iets opleverden en welke niet. Kwam er niets uit,
+    dan staan er zoeklinks naar Stripinfo, LastDodo, Boekwinkeltjes en Google. Die sites hebben
+    geen open interface en laten geautomatiseerde aanvragen niet toe; daar wordt dus niets
+    uitgelezen, net zoals bij de richtprijs.
+  </p>
+  <p>
+    Boeken hebben bijna altijd een ISBN en worden nu vrijwel altijd gevonden. Bij strips en manga
+    zet niet elke uitgever een ISBN op de kaft; staat er alleen een intern nummer, dan kan geen
+    enkele catalogus helpen en vul je de velden zelf aan.
   </p>
   <p>
     Hou de camera even stil. De app aanvaardt een code pas als ze twee keer hetzelfde leest en
@@ -252,6 +315,17 @@
   <p>
     <strong>"Ongeldig of ontbrekend CSRF-token".</strong> Je formulier stond te lang open. Herlaad
     de pagina en verstuur opnieuw.
+  </p>
+  <p>
+    <strong>Ik scan een barcode en krijg geen resultaat.</strong> Kom je van een versie vóór
+    0.1.13, dan is dat verwacht: er werden toen maar twee bronnen bevraagd, en de belangrijkste
+    ervan (Google Books) weigerde een aanvraag vanaf een server zonder dat er een land meegegeven
+    werd. Ze antwoordde met een foutcode die de app als "niets gevonden" las. Vanaf 0.1.13 worden
+    zeven catalogi tegelijk bevraagd, wordt het land wel meegestuurd, en wordt er ook op de
+    ISBN-10-vorm gezocht. Blijft het resultaat leeg, kijk dan onderaan welke bronnen bevraagd
+    werden: staat er dat ze allemaal geantwoord hebben zonder resultaat, dan is de uitgave
+    nergens beschreven en gebruik je de zoeklinks. Zie ook
+    <a href="#scannen">Barcode scannen</a>.
   </p>
   <p>
     <strong>De camera start niet.</strong> Je browser geeft alleen toegang tot de camera over

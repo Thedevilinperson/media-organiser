@@ -86,9 +86,11 @@
 
 {% if groups %}
   <p class="muted">
-    Alle velden, filters en de knoppen om te wijzigen of te verwijderen staan op de
+    Alle velden, filters en de knoppen om te wijzigen, te kopiëren of te verwijderen staan op de
     <a href="{{ url_for('main.full_list') }}">volledige lijst</a>. Tik hierboven op een titel om
-    dat item meteen te openen.
+    dat item meteen te openen. Lijkt een nieuw item sterk op iets dat je al hebt, gebruik dan
+    "Kopie" op die lijst of de keuzelijst bovenaan
+    <a href="{{ url_for('media.add') }}">Toevoegen</a>.
   </p>
 {% endif %}
 {% endblock %}

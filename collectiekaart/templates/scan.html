@@ -5,9 +5,11 @@
   <h2>Barcode scannen</h2>
   <p class="muted intro">
     Richt de camera van je telefoon op de streepjescode en hou even stil: de app leest de code
-    twee keer om zeker te zijn. Titel, auteur en jaar worden opgezocht bij Open Library en Google
-    Books, de rest vul je aan op het formulier. Boeken hebben bijna altijd een ISBN, strips en
-    manga niet altijd. Lukt scannen niet, typ dan de cijfers onder de barcode in.
+    twee keer om zeker te zijn. De gegevens worden opgezocht bij Google Books, Open Library, de
+    Koninklijke Bibliotheek, Wikidata, de Bibliothèque nationale de France, openBD en
+    MusicBrainz — allemaal tegelijk, allemaal gratis. Wat er dan nog ontbreekt, wordt aangevuld
+    met wat je zelf al in je collectie hebt staan. Lukt scannen niet, typ dan de cijfers onder
+    de barcode in.
   </p>
 
   <div id="reader"></div>
@@ -29,11 +31,31 @@
     <h3>Gevonden</h3>
     <p>Barcode: <span id="found-code" class="mono"></span></p>
     <ul id="found-fields"></ul>
+    <p id="found-sources" class="hint"></p>
+    <div id="found-links" class="hint" hidden>
+      <span>Zelf verder zoeken: </span><span id="found-links-list"></span>
+    </div>
     <div class="form-actions">
       <a id="continue-link" class="btn btn-accent" href="#">Verder naar het formulier</a>
       <button id="rescan-btn" class="btn btn-outline" type="button">Nog een scannen</button>
     </div>
   </div>
+</div>
+
+<div class="panel">
+  <h3>Waarom een strip vaker iets oplevert dan vroeger</h3>
+  <p class="muted">
+    Boekencatalogi beschrijven een stripalbum meestal als een gewoon boek: wel een titel, geen
+    reeks en geen nummer. Daarom worden nu ook Wikidata en de nationale bibliotheken bevraagd,
+    die dat wél noteren, en wordt de gevonden titel vergeleken met de reeksen die al in jouw
+    collectie zitten. Herkent de app "De Kiekeboes" in de titel omdat je er al één hebt, dan
+    vult ze reeks, nummer, auteur en collectie meteen zelf in.
+  </p>
+  <p class="muted">
+    Een cd of dvd draagt geen ISBN maar een gewone EAN. Die staat in geen enkele
+    boekencatalogus; daarvoor wordt MusicBrainz geraadpleegd. Dat was de vaakst voorkomende
+    reden dat een scan vroeger niets opleverde.
+  </p>
 </div>
 {% endblock %}
 
