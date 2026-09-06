@@ -34,33 +34,33 @@
         {% for m in group.rows %}
         <tr>
           {% if group.profile == 'strip' %}
-            <td data-label="Reeks">{{ m.series or '—' }}</td>
-            <td data-label="Nr." class="mono">{{ m.series_number | reeksnummer }}</td>
-            <td data-label="Titel">
+            <td data-label="Nr." class="mono col-nr">{{ m.series_number | reeksnummer }}</td>
+            <td data-label="Reeks" class="col-series">{{ m.series or '—' }}</td>
+            <td data-label="Titel" class="col-title">
               <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
               {% if m.active_loan %}<span class="lent-mark" title="uitgeleend aan {{ m.active_loan.borrower_name }}">uitgeleend</span>{% endif %}
             </td>
           {% elif group.profile == 'boek' %}
-            <td data-label="Auteur">{{ m.author or '—' }}</td>
-            <td data-label="Titel">
+            <td data-label="Auteur" class="col-series">{{ m.author or '—' }}</td>
+            <td data-label="Titel" class="col-title">
               <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
               {% if m.active_loan %}<span class="lent-mark">uitgeleend</span>{% endif %}
             </td>
           {% elif group.profile == 'cd' %}
-            <td data-label="Muzikant">{{ m.musician or m.author or '—' }}</td>
-            <td data-label="Titel">
+            <td data-label="Muzikant" class="col-series">{{ m.musician or m.author or '—' }}</td>
+            <td data-label="Titel" class="col-title">
               <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
               {% if m.active_loan %}<span class="lent-mark">uitgeleend</span>{% endif %}
             </td>
-            <td data-label="Jaar" class="mono">{{ m.year or '—' }}</td>
+            <td data-label="Jaar" class="mono col-year">{{ m.year or '—' }}</td>
           {% elif group.profile == 'dvd' %}
-            <td data-label="Titel">
+            <td data-label="Titel" class="col-title">
               <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
               {% if m.active_loan %}<span class="lent-mark">uitgeleend</span>{% endif %}
             </td>
-            <td data-label="Jaar" class="mono">{{ m.year or '—' }}</td>
+            <td data-label="Jaar" class="mono col-year">{{ m.year or '—' }}</td>
           {% else %}
-            <td data-label="Titel">
+            <td data-label="Titel" class="col-title">
               <a href="{{ url_for('media.edit', media_id=m.id) }}">{{ m.title }}</a>
               {% if m.active_loan %}<span class="lent-mark">uitgeleend</span>{% endif %}
             </td>

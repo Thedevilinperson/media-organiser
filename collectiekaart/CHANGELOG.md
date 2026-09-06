@@ -1,5 +1,88 @@
 # Wijzigingen
 
+## 0.1.14
+
+**Nu zie je wat elke bron antwoordde bij een barcode.**
+
+- Onder het resultaat van een scan staat een uitklapbaar overzicht met één
+  regel per bron: of ze iets vond, wat ze terugstuurde, hoe lang het duurde en
+  welke adressen er precies bevraagd werden, met de HTTP-code erbij.
+- Dat verschil was tot nu toe onzichtbaar, en het is net het verschil dat
+  telt. "Deze catalogus antwoordde netjes dat ze de code niet kent" en "deze
+  catalogus gaf een 403 en werd dus nooit echt bevraagd" leverden allebei
+  hetzelfde lege scherm op. Nu staat er bij de eerste *niets gevonden* en bij
+  de tweede *fout*, met de reden erbij in gewone taal.
+- Ging er iets mis, of leverde geen enkele bron iets op, dan staat het
+  overzicht meteen open. Liep alles goed, dan blijft het dichtgeklapt.
+- Bij elk gevonden veld staat voortaan welke bron het aanleverde. Zo zie je bij
+  tegenstrijdige gegevens meteen wie je moet geloven.
+
+**En de zoekresultaten zelf zijn beter.**
+
+- Twee bronnen erbij, van zeven naar negen. De **Deutsche Nationalbibliothek**
+  voor Duitstalige uitgaven en comics, en **UPCitemdb** voor de EAN-codes van
+  dvd-boxen en verzamelaarsuitgaven die MusicBrainz niet kent.
+- De Koninklijke Bibliotheek wordt op drie manieren bevraagd in plaats van
+  één. Hun SRU-laag aanvaardt meerdere schrijfwijzen voor een ISBN-zoekvraag,
+  en welke ervan werkt hangt af van hun versie. Klopte de ene vorm niet, dan
+  kwam er een lege lijst terug die niet van "onbekend ISBN" te onderscheiden
+  was — bij dé bron die voor een Nederlands album het vaakst het antwoord
+  heeft.
+- **Een lege uitkomst wordt niet meer bewaard.** Vroeger bleef die tot aan de
+  volgende herstart in het geheugen hangen. Was een bron toevallig even
+  onbereikbaar, dan leverde opnieuw scannen van diezelfde code gegarandeerd
+  weer niets op, zonder dat er ook maar één aanvraag vertrok. Alleen een
+  geslaagde opzoeking wordt nog onthouden.
+- Nieuwe knop **"Opnieuw opzoeken"**: bevraagt alle bronnen echt opnieuw en
+  slaat het bewaarde antwoord over. Zie je in het overzicht een 403 of een
+  storing staan, dan is dat na een minuutje de moeite waard.
+- Weigert een bron twee aanvragen na elkaar (403 of 429), dan wordt ze niet
+  verder bevraagd. Bij Google Books alleen al waren dat zeven aanvragen die
+  elk in hun eigen time-out liepen, terwijl het antwoord al vaststond.
+
+**Reeksen op een telefoon: eerst het nummer, dan de reeks, dan de titel.**
+
+- Op het overzicht én op de volledige lijst staat het nummer nu vooraan. Dat
+  is de smalste kolom en meteen het gegeven waarop je zoekt binnen een reeks;
+  stond de reeks eerst, dan duwde een lange reeksnaam de titel van het scherm.
+- Lange titels en reeksnamen breken op een telefoon af over meerdere regels.
+  Met alles op één lijn werd de tabel breder dan het scherm zodra er één album
+  met een lange titel tussen stond, en moest je voor élke rij naar rechts
+  schuiven. Een regel extra hoogte is dat ruimschoots waard.
+- Nummer en jaar krijgen een vaste, smalle breedte, zodat de titel de rest van
+  de ruimte krijgt in plaats van omgekeerd.
+
+**Wijzigen rechtstreeks in de tabel.**
+
+- Op de volledige lijst pas je een cel nu aan zonder het formulier te openen.
+  Tik erop, typ, en Enter bewaart; Escape annuleert. Ja/nee-cellen wisselen met
+  één tik, staat en eigenaar krijgen een keuzelijst, commentaar een tekstvak
+  waarin regeleinden bewaard blijven.
+- Zowat alles is aanpasbaar: titel, reeks, nummer, auteur, muzikant,
+  collectie, druk, hardcover, dubbel, staat, eigenaar, jaar, talen, barcode,
+  waarde, commentaar en je eigen velden.
+- De controles zijn precies dezelfde als op het formulier. De server kijkt of
+  het veld voor dat mediatype aanstaat, of het niet verplicht is, en of de
+  waarde binnen haar grenzen valt. Weigert ze, dan springt de cel terug en
+  staat de reden erbij; er wordt nooit stilzwijgend iets anders bewaard.
+- Hoe een cel er na het bewaren uitziet, komt van de server. Zo ziet een
+  gewijzigde waarde er exact hetzelfde uit als na een herlading van de pagina —
+  een bedrag blijft "€ 12,50" en een reeksnummer blijft "12" en geen "12.0".
+- Met het vinkje bovenaan zet je het uit als je liever niet per ongeluk iets
+  aanpast. Die keuze wordt onthouden.
+
+**De schuifbalken staan altijd in beeld.**
+
+- De tabel van de volledige lijst schuift voortaan binnen haar eigen kader in
+  plaats van met de pagina mee. Wilde je vroeger een kolom rechts bekijken, dan
+  moest je eerst honderden rijen naar beneden om bij de horizontale schuifbalk
+  te raken, dan naar rechts, en dan weer helemaal naar boven.
+- De kolomkoppen blijven bovenaan dat kader plakken, zodat je ook halverwege
+  de lijst nog weet welke kolom je bekijkt.
+- Enkel op een breed scherm. Op een telefoon is elke rij een kaartje, is er
+  geen horizontale schuifbalk, en zou een kader met een eigen hoogte alleen
+  maar in de weg zitten.
+
 ## 0.1.13
 
 **Een gescande barcode leverde meestal niets op.**

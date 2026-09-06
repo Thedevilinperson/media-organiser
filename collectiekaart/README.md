@@ -40,10 +40,10 @@ corrigeert. Wil je meer, dan is er de optionele AI-sleutel bij Instellingen. Die
 mag ook naar een LLM wijzen die je zelf thuis draait: vul bij "Eigen AI-adres"
 het adres van je eigen model in en er verlaat niets je netwerk.
 
-**Een barcode opzoeken.** Zeven catalogi worden parallel bevraagd, allemaal
+**Een barcode opzoeken.** Negen catalogi worden parallel bevraagd, allemaal
 gratis en zonder sleutel: Google Books, Open Library, de Koninklijke Bibliotheek
-(GGC, via SRU), Wikidata, de Bibliothèque nationale de France, openBD en
-MusicBrainz. Elk dekt een ander gat. De KB is de Nederlandse nationale
+(GGC, via SRU), Wikidata, de Bibliothèque nationale de France, de Deutsche
+Nationalbibliothek, openBD, MusicBrainz en UPCitemdb. Elk dekt een ander gat. De KB is de Nederlandse nationale
 bibliografie en beschrijft zowat elke uitgave die hier met een ISBN verscheen,
 stripalbums inbegrepen; Wikidata is de enige bron die bij een stripalbum vaak
 reeks én nummer kent; MusicBrainz vangt de EAN-codes van cd's en dvd's op, die in
@@ -54,6 +54,12 @@ reeks die je al hebt in de gevonden titel, dan vult ze reeks, nummer, auteur en
 collectie zelf in. Sites zonder open interface (Stripinfo, LastDodo,
 Boekwinkeltjes) worden niet geschraapt; die geven een zoeklink. Details en de
 volledige afweging staan in `services/barcode_sources.py`.
+
+Elke bron houdt bij wat er gebeurde — welke adressen bevraagd werden, welke
+HTTP-code er terugkwam, hoe lang het duurde — en dat verschijnt onder het
+resultaat van een scan. Dat onderscheid is het punt: "deze catalogus kent de
+code niet" en "deze catalogus gaf een 403" leverden vroeger allebei hetzelfde
+lege scherm op, waardoor een storing als "niets gevonden" gelezen werd.
 
 **Nieuwe nummers opsporen via De Poort.** Dit gebeurt door hun zoekpagina uit te
 lezen, dus zonder AI, gratis en vanaf je eigen toestel. Het is wel afhankelijk
@@ -165,6 +171,7 @@ collectiekaart_v0.1/
     │   └── jobs.py              dagelijkse controle
     ├── templates/               schermen
     ├── static/css, static/js    opmaak en scripts
+    │                            (full_list.js: wijzigen in de tabel zelf)
     ├── data/                    databank (wordt aangemaakt)
     └── uploads/                 kaftfoto's (worden aangemaakt)
 ```
@@ -178,10 +185,13 @@ collectiekaart_v0.1/
 - Het overzicht haalt zijn gegevens in één query op met eager loading, in plaats
   van een aparte query per rij.
 - Een achtergrondtaak controleert één keer per dag op te lang uitgeleende media.
-- De zeven barcodebronnen worden parallel bevraagd met een gezamenlijke
-  tijdslimiet, en het resultaat wordt kort in het geheugen bewaard. Zeven
-  catalogi na elkaar aanspreken duurt op een Raspberry Pi al snel een halve
-  minuut; samen blijft het onder de vijftien seconden.
+- De negen barcodebronnen worden parallel bevraagd met een gezamenlijke
+  tijdslimiet, en een geslaagd resultaat wordt kort in het geheugen bewaard —
+  een leeg resultaat bewust niet, anders blijft een tijdelijke storing bij één
+  bron nawerken tot de volgende herstart. Negen catalogi na elkaar aanspreken
+  duurt op een Raspberry Pi al snel een minuut; samen blijft het onder de
+  zestien seconden. Een bron die twee aanvragen na elkaar weigert, wordt niet
+  verder bevraagd.
 - Zie `SECURITY.md` voor de screening op kwetsbaarheden.
 
 ## Back-up

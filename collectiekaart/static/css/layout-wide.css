@@ -36,3 +36,46 @@
     padding: 4px 8px;
   }
 }
+
+/* ---------- De tabel schuift binnen haar eigen kader ---------- */
+/*
+  Probleem dat dit oplost: bij een lange lijst staat de horizontale schuifbalk
+  helemaal onderaan de tabel. Wil je een kolom rechts zien, dan moet je eerst
+  honderden rijen naar beneden scrollen om bij die balk te raken, dan naar
+  rechts, en dan weer helemaal naar boven.
+
+  De oplossing is de tabel een eigen hoogte geven. Ze schuift dan binnen dat
+  kader in plaats van met de pagina mee, waardoor haar schuifbalken — verticaal
+  én horizontaal — altijd in beeld staan, ongeacht waar je in de lijst zit. De
+  kolomkoppen blijven bovenaan het kader plakken, zodat je ook halverwege nog
+  weet welke kolom je bekijkt.
+
+  Enkel vanaf 701px: onder die breedte is elke rij een kaartje, is er geen
+  horizontale schuifbalk en zou een kader met een eigen hoogte alleen maar in de
+  weg zitten.
+*/
+@media (min-width: 701px) {
+  .table-scroll {
+    max-height: calc(100vh - 260px);
+    min-height: 300px;
+    overflow: auto;
+    /* Voorkomt dat de pagina meeschuift zodra het kader zelf aan zijn einde is. */
+    overscroll-behavior: contain;
+  }
+
+  .table-scroll table.data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--paper);
+    /* Een gewone border verdwijnt mee met de rand van de cel bij het schuiven;
+       een inset-schaduw blijft wel staan. */
+    border-bottom: none;
+    box-shadow: inset 0 -2px 0 var(--ink);
+  }
+
+  .table-scroll table.data-table caption.table-caption {
+    text-align: left;
+    background: var(--paper);
+  }
+}

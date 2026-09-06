@@ -6,10 +6,10 @@
   <p class="muted intro">
     Richt de camera van je telefoon op de streepjescode en hou even stil: de app leest de code
     twee keer om zeker te zijn. De gegevens worden opgezocht bij Google Books, Open Library, de
-    Koninklijke Bibliotheek, Wikidata, de Bibliothèque nationale de France, openBD en
-    MusicBrainz — allemaal tegelijk, allemaal gratis. Wat er dan nog ontbreekt, wordt aangevuld
-    met wat je zelf al in je collectie hebt staan. Lukt scannen niet, typ dan de cijfers onder
-    de barcode in.
+    Koninklijke Bibliotheek, Wikidata, de Bibliothèque nationale de France, de Deutsche
+    Nationalbibliothek, openBD, MusicBrainz en UPCitemdb — allemaal tegelijk, allemaal gratis.
+    Wat er dan nog ontbreekt, wordt aangevuld met wat je zelf al in je collectie hebt staan.
+    Lukt scannen niet, typ dan de cijfers onder de barcode in.
   </p>
 
   <div id="reader"></div>
@@ -35,8 +35,27 @@
     <div id="found-links" class="hint" hidden>
       <span>Zelf verder zoeken: </span><span id="found-links-list"></span>
     </div>
+
+    <details id="found-report" class="source-report" hidden>
+      <summary>Wat elke bron antwoordde</summary>
+      <p class="muted">
+        Per bron staat hier of ze antwoordde, wat ze terugstuurde en hoe lang het duurde.
+        Zo zie je meteen het verschil tussen "deze catalogus kent de code niet" en "deze
+        catalogus was onbereikbaar of weigerde de aanvraag". Klap een regel open voor de
+        adressen en de HTTP-codes.
+      </p>
+      <table class="data-table source-table">
+        <thead>
+          <tr><th>Bron</th><th>Uitkomst</th><th>Toelichting</th><th>Tijd</th></tr>
+        </thead>
+        <tbody id="found-report-rows"></tbody>
+      </table>
+    </details>
+
     <div class="form-actions">
       <a id="continue-link" class="btn btn-accent" href="#">Verder naar het formulier</a>
+      <button id="retry-btn" class="btn btn-outline" type="button"
+              title="Bevraagt alle bronnen opnieuw, zonder het bewaarde antwoord te gebruiken">Opnieuw opzoeken</button>
       <button id="rescan-btn" class="btn btn-outline" type="button">Nog een scannen</button>
     </div>
   </div>
@@ -53,8 +72,14 @@
   </p>
   <p class="muted">
     Een cd of dvd draagt geen ISBN maar een gewone EAN. Die staat in geen enkele
-    boekencatalogus; daarvoor wordt MusicBrainz geraadpleegd. Dat was de vaakst voorkomende
-    reden dat een scan vroeger niets opleverde.
+    boekencatalogus; daarvoor worden MusicBrainz en UPCitemdb geraadpleegd. Dat was de vaakst
+    voorkomende reden dat een scan vroeger niets opleverde.
+  </p>
+  <p class="muted">
+    Levert een scan toch niets op, klap dan "Wat elke bron antwoordde" open. Staat daar bij elke
+    bron dat ze antwoordde maar de code niet kent, dan staat de uitgave nergens beschreven en
+    vul je de velden zelf in. Staat er een foutcode bij — 403, 429 of een storing — dan lag het
+    aan die bron en is "Opnieuw opzoeken" na een minuutje de moeite waard.
   </p>
 </div>
 {% endblock %}

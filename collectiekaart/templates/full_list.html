@@ -69,8 +69,23 @@
 </form>
 
 <div class="panel">
-  <div class="table-wrap">
-    <table class="data-table">
+  <div class="table-toolbar">
+    <label class="inline-toggle">
+      <input type="checkbox" id="inline-edit-toggle" checked>
+      Rechtstreeks wijzigen in de tabel
+    </label>
+    <span id="inline-status" class="inline-status" aria-live="polite"></span>
+  </div>
+  <p class="muted inline-hint">
+    Tik op een cel met een stippellijn om ze meteen aan te passen. Enter bewaart, Escape annuleert,
+    en ja/nee-cellen wisselen met één tik. De tabel schuift binnen haar eigen kader, zodat de
+    schuifbalken en de kolomkoppen altijd in beeld blijven.
+  </p>
+
+  <div class="table-wrap table-scroll">
+    <table class="data-table editable"
+           data-owners="{{ owners | tojson }}"
+           data-conditions="{{ conditions | tojson }}">
       <caption class="table-caption">{{ items|length }} van {{ grand_total }} items</caption>
       <thead>
         <tr>
@@ -82,7 +97,7 @@
       </thead>
       <tbody>
         {% for m in items %}
-        <tr>
+        <tr data-url="{{ url_for('media.inline_edit', media_id=m.id) }}">
           {% if 'cover_image' in visible_fields %}
           <td data-label="Kaft">
             {% if m.cover_image %}
@@ -92,63 +107,83 @@
           </td>
           {% endif %}
           <td data-label="Type"><span class="type-badge">{{ m.media_type.label if m.media_type else '—' }}</span></td>
-          {% if 'series' in visible_fields %}
-          <td data-label="Reeks">{{ m.series or '—' }}</td>
-          {% endif %}
           {% if 'series_number' in visible_fields %}
-          <td data-label="Nr." class="mono">{{ m.series_number | reeksnummer }}</td>
+          <td data-label="Nr." class="mono col-nr edit-cell" data-field="series_number"
+              data-kind="number" data-value="{{ m.series_number | reeksnummer if m.series_number is not none else '' }}">{{ m.series_number | reeksnummer }}</td>
           {% endif %}
-          <td data-label="Titel"><strong>{{ m.title }}</strong></td>
+          {% if 'series' in visible_fields %}
+          <td data-label="Reeks" class="col-series edit-cell" data-field="series"
+              data-kind="text" data-value="{{ m.series or '' }}">{{ m.series or '—' }}</td>
+          {% endif %}
+          <td data-label="Titel" class="col-title edit-cell" data-field="title"
+              data-kind="text" data-value="{{ m.title }}"><strong>{{ m.title }}</strong></td>
           {% if 'author' in visible_fields %}
-          <td data-label="Auteur">{{ m.author or '—' }}</td>
+          <td data-label="Auteur" class="edit-cell" data-field="author"
+              data-kind="text" data-value="{{ m.author or '' }}">{{ m.author or '—' }}</td>
           {% endif %}
           {% if 'musician' in visible_fields %}
-          <td data-label="Muzikant">{{ m.musician or '—' }}</td>
+          <td data-label="Muzikant" class="edit-cell" data-field="musician"
+              data-kind="text" data-value="{{ m.musician or '' }}">{{ m.musician or '—' }}</td>
           {% endif %}
           {% if 'collection' in visible_fields %}
-          <td data-label="Collectie">{{ m.collection or '—' }}</td>
+          <td data-label="Collectie" class="edit-cell" data-field="collection"
+              data-kind="text" data-value="{{ m.collection or '' }}">{{ m.collection or '—' }}</td>
           {% endif %}
           {% if 'collection_number' in visible_fields %}
-          <td data-label="Nr. coll." class="mono">{{ m.collection_number if m.collection_number is not none else '—' }}</td>
+          <td data-label="Nr. coll." class="mono edit-cell" data-field="collection_number"
+              data-kind="int" data-value="{{ m.collection_number if m.collection_number is not none else '' }}">{{ m.collection_number if m.collection_number is not none else '—' }}</td>
           {% endif %}
           {% if 'print_number' in visible_fields %}
-          <td data-label="Druk" class="mono">{{ m.print_number if m.print_number is not none else '—' }}</td>
+          <td data-label="Druk" class="mono edit-cell" data-field="print_number"
+              data-kind="int" data-value="{{ m.print_number if m.print_number is not none else '' }}">{{ m.print_number if m.print_number is not none else '—' }}</td>
           {% endif %}
           {% if 'is_hardcover' in visible_fields %}
-          <td data-label="Hardcover">{{ 'ja' if m.is_hardcover else 'nee' }}</td>
+          <td data-label="Hardcover" class="edit-cell" data-field="is_hardcover"
+              data-kind="bool" data-value="{{ '1' if m.is_hardcover else '0' }}">{{ 'ja' if m.is_hardcover else 'nee' }}</td>
           {% endif %}
           {% if 'is_duplicate' in visible_fields %}
-          <td data-label="Dubbel">{{ 'ja' if m.is_duplicate else 'nee' }}</td>
+          <td data-label="Dubbel" class="edit-cell" data-field="is_duplicate"
+              data-kind="bool" data-value="{{ '1' if m.is_duplicate else '0' }}">{{ 'ja' if m.is_duplicate else 'nee' }}</td>
           {% endif %}
           {% if 'condition' in visible_fields %}
-          <td data-label="Staat">{{ m.condition or '—' }}</td>
+          <td data-label="Staat" class="edit-cell" data-field="condition"
+              data-kind="condition" data-value="{{ m.condition or '' }}">{{ m.condition or '—' }}</td>
           {% endif %}
           {% if 'owner_id' in visible_fields %}
-          <td data-label="Eigenaar">{{ m.owner.name if m.owner else '—' }}</td>
+          <td data-label="Eigenaar" class="edit-cell" data-field="owner_id"
+              data-kind="owner" data-value="{{ m.owner_id or '' }}">{{ m.owner.name if m.owner else '—' }}</td>
           {% endif %}
           {% if 'year' in visible_fields %}
-          <td data-label="Jaar" class="mono">{{ m.year or '—' }}</td>
+          <td data-label="Jaar" class="mono edit-cell" data-field="year"
+              data-kind="int" data-value="{{ m.year or '' }}">{{ m.year or '—' }}</td>
           {% endif %}
           {% if 'audio_language' in visible_fields %}
-          <td data-label="Taal audio">{{ m.audio_language or '—' }}</td>
+          <td data-label="Taal audio" class="edit-cell" data-field="audio_language"
+              data-kind="text" data-value="{{ m.audio_language or '' }}">{{ m.audio_language or '—' }}</td>
           {% endif %}
           {% if 'subtitle_language' in visible_fields %}
-          <td data-label="Ondertiteling">{{ m.subtitle_language or '—' }}</td>
+          <td data-label="Ondertiteling" class="edit-cell" data-field="subtitle_language"
+              data-kind="text" data-value="{{ m.subtitle_language or '' }}">{{ m.subtitle_language or '—' }}</td>
           {% endif %}
           {% if 'barcode' in visible_fields %}
-          <td data-label="Barcode" class="mono">{{ m.barcode or '—' }}</td>
+          <td data-label="Barcode" class="mono edit-cell" data-field="barcode"
+              data-kind="text" data-value="{{ m.barcode or '' }}">{{ m.barcode or '—' }}</td>
           {% endif %}
           {% if 'estimated_value' in visible_fields %}
-          <td data-label="Waarde" class="mono">{{ m.estimated_value | euro if m.estimated_value else '—' }}</td>
+          <td data-label="Waarde" class="mono edit-cell" data-field="estimated_value"
+              data-kind="number" data-value="{{ m.estimated_value if m.estimated_value is not none else '' }}">{{ m.estimated_value | euro if m.estimated_value else '—' }}</td>
           {% endif %}
           {% for f in custom_fields %}
             {% set value = (m.custom_fields or {}).get(f.key) %}
-            <td data-label="{{ f.label }}">
+            <td data-label="{{ f.label }}" class="edit-cell" data-field="cf_{{ f.key }}"
+                data-kind="{{ 'bool' if f.field_type == 'checkbox' else ('number' if f.field_type == 'number' else 'text') }}"
+                data-value="{% if value is sameas true %}1{% elif value is sameas false %}0{% else %}{{ value if value is not none else '' }}{% endif %}">
               {% if value is sameas true %}ja{% elif value is sameas false %}nee{% else %}{{ value if value not in (none, '') else '—' }}{% endif %}
             </td>
           {% endfor %}
           {% if show_comment %}
-          <td data-label="Commentaar" class="comment-cell">{{ m.comment or '—' }}</td>
+          <td data-label="Commentaar" class="comment-cell edit-cell" data-field="comment"
+              data-kind="text" data-value="{{ m.comment or '' }}">{{ m.comment or '—' }}</td>
           {% endif %}
           <td data-label="Uitgeleend">
             {% if m.active_loan %}
@@ -177,4 +212,5 @@
 
 {% block scripts %}
 <script src="{{ asset('js/app.js') }}"></script>
+<script src="{{ asset('js/full_list.js') }}"></script>
 {% endblock %}

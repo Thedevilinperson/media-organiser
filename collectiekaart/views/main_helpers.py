@@ -8,8 +8,11 @@ SEARCHABLE = (
 # Welke kolommen het overzicht per veldenprofiel toont, en waarop er binnen dat
 # profiel gesorteerd wordt. Bewust kort gehouden: op een telefoon moet een rij
 # in één oogopslag leesbaar zijn.
+# Bij strips staat het nummer vooraan. Op een telefoon is dat de smalste kolom
+# en meteen het gegeven waarop je zoekt binnen een reeks; stond de reeks eerst,
+# dan duwde een lange reeksnaam de titel van het scherm.
 PROFILE_COLUMNS = {
-    "strip": ["Reeks", "Nr.", "Titel"],
+    "strip": ["Nr.", "Reeks", "Titel"],
     "boek": ["Auteur", "Titel"],
     "cd": ["Muzikant", "Titel", "Jaar"],
     "dvd": ["Titel", "Jaar"],

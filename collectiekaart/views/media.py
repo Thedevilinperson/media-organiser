@@ -400,6 +400,213 @@ def delete(media_id):
 
 
 # ---------------------------------------------------------------------------
+# Eén veld wijzigen, rechtstreeks in de tabel
+# ---------------------------------------------------------------------------
+# Wat je op de volledige lijst in een cel mag aanpassen, en hoe de waarde
+# gecontroleerd wordt. Bewust dezelfde grenzen als in _apply_form() hierboven:
+# de tabel is een tweede weg naar hetzelfde model, geen tweede set regels.
+INLINE_FIELDS = {
+    "title": {"kind": "text", "max": 300},
+    "series": {"kind": "text", "max": 300},
+    "series_number": {"kind": "number", "min": 0, "max": 10000},
+    "author": {"kind": "text", "max": 200},
+    "musician": {"kind": "text", "max": 200},
+    "collection": {"kind": "text", "max": 200},
+    "collection_number": {"kind": "int", "min": 0, "max": 100000},
+    "print_number": {"kind": "int", "min": 0, "max": 1000},
+    "is_hardcover": {"kind": "bool"},
+    "is_duplicate": {"kind": "bool"},
+    "condition": {"kind": "condition"},
+    "owner_id": {"kind": "owner"},
+    "year": {"kind": "int", "min": 0, "max": 2200},
+    "audio_language": {"kind": "text", "max": 100},
+    "subtitle_language": {"kind": "text", "max": 100},
+    "barcode": {"kind": "text", "max": 64},
+    "estimated_value": {"kind": "number", "min": 0, "max": 1000000},
+    "comment": {"kind": "text", "max": 4000},
+}
+
+
+def _euro(value):
+    return "€ {:,.2f}".format(value or 0).replace(",", " ").replace(".", ",", 1)
+
+
+def _nummer(value):
+    """12.0 wordt 12, 3.5 blijft 3.5 — net zoals de filter in de sjablonen."""
+    if value is None:
+        return None
+    return str(int(value)) if float(value).is_integer() else str(value)
+
+
+def _inline_display(media, field):
+    """
+    De tekst die na het bewaren in de cel moet komen te staan. Wordt hier
+    opgebouwd en niet in de browser, zodat een cel er na een wijziging exact
+    hetzelfde uitziet als na een gewone herlading van de pagina.
+    """
+    if field.startswith("cf_"):
+        waarde = (media.custom_fields or {}).get(field[3:])
+        if waarde is True:
+            return "ja"
+        if waarde is False:
+            return "nee"
+        if isinstance(waarde, float):
+            return _nummer(waarde)
+        return str(waarde) if waarde not in (None, "") else "—"
+
+    waarde = getattr(media, field, None)
+    if field in ("is_hardcover", "is_duplicate"):
+        return "ja" if waarde else "nee"
+    if field == "owner_id":
+        return media.owner.name if media.owner else "—"
+    if field == "series_number":
+        return _nummer(waarde) or "—"
+    if field == "estimated_value":
+        return _euro(waarde) if waarde else "—"
+    if waarde in (None, ""):
+        return "—"
+    return str(waarde)
+
+
+def _inline_raw(media, field):
+    """De waarde zoals ze in het invoervakje hoort te staan bij een volgende keer."""
+    if field.startswith("cf_"):
+        waarde = (media.custom_fields or {}).get(field[3:])
+    else:
+        waarde = getattr(media, field, None)
+    if waarde is None:
+        return ""
+    if isinstance(waarde, bool):
+        return "1" if waarde else "0"
+    if isinstance(waarde, float):
+        return _nummer(waarde)
+    return str(waarde)
+
+
+def _inline_value(spec, raw):
+    """Zet de ruwe invoer om, of geeft een foutmelding terug."""
+    kind = spec["kind"]
+    if kind == "bool":
+        return str(raw).lower() in ("1", "true", "on", "ja", "yes"), None
+    if kind == "text":
+        return clean_text(raw, spec.get("max", 300)), None
+    if kind == "int":
+        if clean_text(raw) is None:
+            return None, None
+        waarde = safe_int(raw, None, spec.get("min"), spec.get("max"))
+        if waarde is None:
+            return None, f"Vul een geheel getal in tussen {spec.get('min')} en {spec.get('max')}."
+        return waarde, None
+    if kind == "number":
+        if clean_text(raw) is None:
+            return None, None
+        waarde = safe_float(raw, None, spec.get("min"), spec.get("max"))
+        if waarde is None:
+            return None, f"Vul een getal in tussen {spec.get('min')} en {spec.get('max')}."
+        return waarde, None
+    if kind == "condition":
+        tekst = clean_text(raw)
+        if tekst is None:
+            return None, None
+        if tekst not in CONDITIONS:
+            return None, "Onbekende staat."
+        return tekst, None
+    if kind == "owner":
+        owner_id = safe_int(raw)
+        if not owner_id:
+            return None, None
+        if db.session.get(Owner, owner_id) is None:
+            return None, "Die eigenaar bestaat niet meer."
+        return owner_id, None
+    return None, "Dit veld kan niet in de tabel gewijzigd worden."
+
+
+@media_bp.route("/<int:media_id>/veld", methods=["POST"])
+def inline_edit(media_id):
+    """
+    Wijzigt één veld van één item, zonder het formulier te openen.
+
+    Geeft altijd status 200 met een JSON-antwoord terug, ook bij een fout.
+    Een 400 zou hier de foutpagina in HTML opleveren, en die kan de tabel niet
+    tonen; nu verschijnt de melding gewoon in de cel zelf.
+
+    De controles zijn dezelfde als op het formulier: het veld moet voor dit
+    mediatype zichtbaar zijn, verplichte velden mogen niet leeggemaakt worden,
+    en elke waarde gaat door dezelfde begrenzing.
+    """
+    media = db.session.get(Media, media_id)
+    if media is None:
+        return jsonify({"ok": False, "error": "Dat item bestaat niet meer."})
+
+    payload = request.get_json(silent=True) or {}
+    field = str(payload.get("field", ""))[:60]
+    raw = payload.get("value", "")
+
+    media_type = media.media_type
+    if media_type is None:
+        return jsonify({"ok": False, "error": "Dit item heeft geen mediatype."})
+    zichtbaar = media_type.visible_fields()
+    verplicht = media_type.required_fields()
+
+    # --- een eigen veld uit Instellingen ---
+    if field.startswith("cf_"):
+        sleutel = field[3:]
+        eigen = (db.session.query(CustomField)
+                 .filter_by(key=sleutel)
+                 .filter(CustomField.media_type_id.in_([None, media.media_type_id]))
+                 .first())
+        if eigen is None:
+            return jsonify({"ok": False, "error": "Onbekend veld."})
+        if eigen.field_type == "checkbox":
+            waarde = str(raw).lower() in ("1", "true", "on", "ja", "yes")
+        elif eigen.field_type == "number":
+            waarde = safe_float(raw)
+        else:
+            waarde = clean_text(raw, 500)
+        if eigen.required and waarde in (None, "", False):
+            return jsonify({"ok": False, "error": f"'{eigen.label}' is verplicht."})
+        waarden = dict(media.custom_fields or {})
+        waarden[sleutel] = waarde
+        media.custom_fields = {k: v for k, v in waarden.items() if v not in (None, "")}
+        db.session.commit()
+        return jsonify({"ok": True, "field": field,
+                        "display": _inline_display(media, field),
+                        "value": _inline_raw(media, field)})
+
+    # --- een gewoon veld ---
+    spec = INLINE_FIELDS.get(field)
+    if spec is None:
+        return jsonify({"ok": False, "error": "Dit veld kan niet in de tabel gewijzigd worden."})
+    if field != "title" and field not in zichtbaar:
+        return jsonify({"ok": False,
+                        "error": f"'{FIELD_LABELS.get(field, field)}' staat niet aan voor "
+                                 f"{media_type.label}."})
+
+    waarde, fout = _inline_value(spec, raw)
+    if fout:
+        return jsonify({"ok": False, "error": fout})
+
+    if field == "title" and not waarde:
+        return jsonify({"ok": False, "error": "Een titel is verplicht."})
+    if field in verplicht and waarde in (None, "", False):
+        return jsonify({"ok": False,
+                        "error": f"'{FIELD_LABELS.get(field, field)}' is verplicht voor "
+                                 f"{media_type.label}."})
+
+    setattr(media, field, waarde)
+
+    # Vul je zelf een waarde in, dan is die manueel — precies zoals op het
+    # formulier en op de waardepagina.
+    if field == "estimated_value":
+        media.value_source = "manueel" if waarde is not None else None
+
+    db.session.commit()
+    return jsonify({"ok": True, "field": field,
+                    "display": _inline_display(media, field),
+                    "value": _inline_raw(media, field)})
+
+
+# ---------------------------------------------------------------------------
 # Ingave via barcode
 # ---------------------------------------------------------------------------
 @media_bp.route("/scan")
@@ -413,8 +620,14 @@ def api_barcode(code):
     Zoekt de code op bij alle externe bronnen en vult daarna aan met wat je
     zelf al in huis hebt. Die laatste stap kost niets en helpt net bij strips,
     waar de catalogi de reeks zelden invullen.
+
+    Met `?opnieuw=1` wordt het antwoord uit het geheugen overgeslagen. Dat is
+    wat de knop "Opnieuw opzoeken" op de scanpagina doet: was een bron net even
+    onbereikbaar, dan wil je een echte nieuwe poging zien en niet het bewaarde
+    antwoord van vijf seconden geleden.
     """
-    resultaat = lookup_barcode_detailed(code[:40])
+    opnieuw = request.args.get("opnieuw") in ("1", "true", "ja", "on")
+    resultaat = lookup_barcode_detailed(code[:40], use_cache=not opnieuw)
     resultaat["fields"], resultaat["from_collection"] = _enrich_from_collection(resultaat["fields"])
     if resultaat["from_collection"]:
         resultaat["found"] = True

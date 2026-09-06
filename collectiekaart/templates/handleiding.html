@@ -8,6 +8,7 @@
   <ul class="manual-toc">
     <li><a href="#overzicht">Het overzicht</a></li>
     <li><a href="#lijst">De volledige lijst</a></li>
+    <li><a href="#inline">Wijzigen in de tabel</a></li>
     <li><a href="#toevoegen">Items toevoegen</a></li>
     <li><a href="#kopie">Nieuw op basis van een bestaand item</a></li>
     <li><a href="#scannen">Barcode scannen</a></li>
@@ -29,10 +30,17 @@
   </p>
   <p>
     De lijst staat per type gegroepeerd en toont per type alleen wat je nodig hebt om iets te
-    herkennen. Strips, comics, manga en anime: reeks, nummer en titel, alfabetisch op reeks en
+    herkennen. Strips, comics, manga en anime: nummer, reeks en titel, alfabetisch op reeks en
     daarbinnen op nummer. Boeken: auteur en titel, alfabetisch op auteur. Cd's: muzikant, titel en
     jaar. Dvd's: titel en jaar. Tik op een titel om dat item meteen te openen. Staat er iets
     uitgeleend, dan zie je dat aan een klein merkteken naast de titel.
+  </p>
+  <p>
+    Het nummer staat vooraan, vóór de reeks. Dat is bewust: het is de smalste kolom en meteen het
+    gegeven waarop je binnen een reeks zoekt. Stond de reeks eerst, dan duwde een lange reeksnaam
+    de titel van een telefoonscherm af. Lange titels en reeksnamen breken op een telefoon af over
+    meerdere regels, zodat de drie kolommen samen op één scherm passen en je niet meer naar rechts
+    hoeft te schuiven.
   </p>
   <p>
     Auteurs worden gesorteerd zoals je ze invult. Wil je op familienaam sorteren, vul de auteur
@@ -42,15 +50,48 @@
   <h3 id="lijst">De volledige lijst</h3>
   <p>
     Wil je álle velden zien, ga dan naar "Volledige lijst". Daar staat elke kolom die de app kent,
-    inclusief je eigen velden, plus de knoppen om te wijzigen of te verwijderen. Op een breed
-    scherm schuif je de tabel zijwaarts; op een telefoon wordt elke rij een kaartje met de
-    veldnamen ernaast.
+    inclusief je eigen velden, plus de knoppen om te wijzigen of te verwijderen. Op een telefoon
+    wordt elke rij een kaartje met de veldnamen ernaast.
+  </p>
+  <p>
+    Op een breed scherm schuift de tabel binnen haar eigen kader in plaats van met de pagina mee.
+    Daardoor staan de schuifbalken — de verticale én de horizontale — altijd in beeld, ook als je
+    honderden rijen ver zit, en blijven de kolomkoppen bovenaan het kader plakken. Vroeger stond
+    de horizontale schuifbalk helemaal onderaan de tabel: wilde je een kolom rechts bekijken, dan
+    moest je eerst helemaal naar beneden, dan naar rechts, en dan weer helemaal naar boven.
   </p>
   <p>
     De vier keuzelijsten staan hier, achter "Filters". Ze werken samen: kies je eigenaar "Jan",
     dan tonen de lijsten voor reeks en titel alleen nog wat Jan bezit. Zo kan je nooit een
     combinatie kiezen die niets oplevert. Ze staan bewust op deze pagina en niet op het overzicht,
     want op een telefoon duwen vier keuzelijsten de resultaten van het scherm af.
+  </p>
+
+  <h3 id="inline">Wijzigen in de tabel</h3>
+  <p>
+    Op de <a href="{{ url_for('main.full_list') }}">volledige lijst</a> pas je een waarde aan
+    zonder het formulier te openen. Tik op een cel met een stippellijn eronder, typ de nieuwe
+    waarde en druk op Enter. Escape annuleert, en klik je gewoon ergens anders, dan wordt er
+    bewaard. Ja/nee-cellen zoals hardcover en dubbel exemplaar wisselen met één tik; staat en
+    eigenaar krijgen een keuzelijst; commentaar krijgt een tekstvak waarin je regeleinden mag
+    gebruiken (daar bewaar je met Ctrl+Enter of door het vak te verlaten).
+  </p>
+  <p>
+    Zowat elk veld is zo aanpasbaar: titel, reeks en nummer, auteur, muzikant, collectie en nummer
+    in de collectie, druk, hardcover, dubbel, staat, eigenaar, jaar, de twee talen, barcode,
+    waarde, commentaar en je eigen velden. Type en kaftfoto niet: die verander je op het
+    invulformulier, met de knop "Wijzigen" in de rij.
+  </p>
+  <p>
+    De controles zijn precies dezelfde als op het formulier. Een veld dat voor dat mediatype
+    uitstaat, kan je in de tabel evenmin invullen; een verplicht veld kan je niet leegmaken; en
+    een getal buiten zijn grenzen wordt geweigerd. Gebeurt dat, dan springt de cel terug naar de
+    oude waarde en verschijnt de reden bovenaan de tabel. Er wordt nooit stilzwijgend iets anders
+    bewaard dan wat je intikte.
+  </p>
+  <p>
+    Wil je liever niet per ongeluk iets aanpassen, zet dan het vinkje "Rechtstreeks wijzigen in de
+    tabel" bovenaan uit. Die keuze onthoudt je browser voor de volgende keer.
   </p>
 
   <h3 id="toevoegen">Items toevoegen</h3>
@@ -97,7 +138,7 @@
   <h3 id="scannen">Barcode scannen</h3>
   <p>
     Open <a href="{{ url_for('media.scan') }}">Scannen</a> op je telefoon en richt de camera op de
-    streepjescode. De app bevraagt daarna zeven catalogi tegelijk. Allemaal gratis, allemaal
+    streepjescode. De app bevraagt daarna negen catalogi tegelijk. Allemaal gratis, allemaal
     zonder sleutel of account:
   </p>
   <ul>
@@ -110,9 +151,14 @@
       het nummer daarin kent.</li>
     <li><strong>Bibliothèque nationale de France</strong> — voor Franstalige albums en voor
       vertalingen waarvan de Nederlandse uitgave nergens beschreven staat.</li>
+    <li><strong>Deutsche Nationalbibliothek</strong> — de Duitse nationale bibliografie, voor
+      Duitstalige uitgaven en comics.</li>
     <li><strong>openBD</strong> — Japanse uitgaven, voor manga in het origineel.</li>
     <li><strong>MusicBrainz</strong> — voor cd's en dvd's, die geen ISBN dragen maar een gewone
       EAN.</li>
+    <li><strong>UPCitemdb</strong> — een algemene barcodedatabank, voor dvd-boxen en
+      verzamelaarsuitgaven die MusicBrainz niet kent. De gegevens zijn ruwer dan die van een
+      bibliotheek, vaak enkel de titel zoals ze in de winkel heet.</li>
   </ul>
   <p>
     Ze worden naast elkaar bevraagd in plaats van na elkaar, met een gezamenlijke tijdslimiet van
@@ -128,10 +174,22 @@
     auteur en collectie zelf in. Dat kost geen enkele extra aanvraag.
   </p>
   <p>
-    Onderaan het resultaat zie je welke bronnen iets opleverden en welke niet. Kwam er niets uit,
-    dan staan er zoeklinks naar Stripinfo, LastDodo, Boekwinkeltjes en Google. Die sites hebben
-    geen open interface en laten geautomatiseerde aanvragen niet toe; daar wordt dus niets
-    uitgelezen, net zoals bij de richtprijs.
+    Onderaan het resultaat zie je welke bronnen iets opleverden en welke niet, en bij elk gevonden
+    veld staat van welke bron het komt. Kwam er niets uit, dan staan er zoeklinks naar Stripinfo,
+    LastDodo, Boekwinkeltjes en Google. Die sites hebben geen open interface en laten
+    geautomatiseerde aanvragen niet toe; daar wordt dus niets uitgelezen, net zoals bij de
+    richtprijs.
+  </p>
+  <p>
+    Klap "Wat elke bron antwoordde" open en je ziet per bron of ze antwoordde, wat ze terugstuurde
+    en hoe lang het duurde. Dat verschil is belangrijk. Staat er bij elke bron <em>niets
+    gevonden</em>, dan hebben ze allemaal netjes geantwoord dat ze deze code niet kennen: de
+    uitgave staat nergens beschreven en je vult de velden zelf in. Staat er ergens <em>fout</em>,
+    dan lag het aan die bron — een 403 betekent dat ze de aanvraag weigert, een 429 dat er te veel
+    aanvragen na elkaar kwamen, en een code in de 500 dat het bij hen zelf mis liep. Klap zo'n
+    regel verder open voor de exacte adressen en codes. Bij een fout is de knop <strong>"Opnieuw
+    opzoeken"</strong> na een minuutje de moeite: die bevraagt alle bronnen echt opnieuw in plaats
+    van het bewaarde antwoord te tonen.
   </p>
   <p>
     Boeken hebben bijna altijd een ISBN en worden nu vrijwel altijd gevonden. Bij strips en manga
@@ -299,9 +357,11 @@
     met Ctrl+F5 (op een telefoon: wis de sitegegevens van deze pagina).
   </p>
   <p>
-    <strong>Een kolom rechts in een tabel ontbreekt.</strong> Tabellen schuiven horizontaal zodra
-    ze breder zijn dan het scherm; de schuifbalk staat helemaal onderaan de tabel en valt bij een
-    lange lijst dus niet op. Vóór versie 0.1.12 kon op de reeksenpagina één reeks met honderden
+    <strong>Een kolom rechts in een tabel ontbreekt.</strong> Op de volledige lijst is dat vanaf
+    0.1.14 opgelost: die tabel schuift binnen haar eigen kader, zodat de horizontale schuifbalk
+    altijd onder in beeld staat. Elders schuiven tabellen horizontaal zodra ze breder zijn dan het
+    scherm; de schuifbalk staat daar helemaal onderaan de tabel en valt bij een lange lijst dus
+    niet op. Vóór versie 0.1.12 kon op de reeksenpagina één reeks met honderden
     ontbrekende nummers de tabel zo breed maken dat de kolom "Nieuw bij De Poort" buiten beeld
     stond. Sindsdien breken die cellen af en worden lange reeksen compact genoteerd (zie
     <a href="#reeksen">Reeksen aanvullen</a>). Zie je het toch nog ergens: scrol de tabel naar
@@ -321,11 +381,25 @@
     0.1.13, dan is dat verwacht: er werden toen maar twee bronnen bevraagd, en de belangrijkste
     ervan (Google Books) weigerde een aanvraag vanaf een server zonder dat er een land meegegeven
     werd. Ze antwoordde met een foutcode die de app als "niets gevonden" las. Vanaf 0.1.13 worden
-    zeven catalogi tegelijk bevraagd, wordt het land wel meegestuurd, en wordt er ook op de
-    ISBN-10-vorm gezocht. Blijft het resultaat leeg, kijk dan onderaan welke bronnen bevraagd
-    werden: staat er dat ze allemaal geantwoord hebben zonder resultaat, dan is de uitgave
-    nergens beschreven en gebruik je de zoeklinks. Zie ook
+    meerdere catalogi tegelijk bevraagd, wordt het land wel meegestuurd, en wordt er ook op de
+    ISBN-10-vorm gezocht. Vanaf 0.1.14 zijn dat er negen, en klap je onderaan "Wat elke bron
+    antwoordde" open om te zien waar het misging: antwoordden ze allemaal zonder resultaat, dan is
+    de uitgave nergens beschreven en gebruik je de zoeklinks; staat er een foutcode bij, dan lag
+    het aan die bron en probeer je het opnieuw met de knop "Opnieuw opzoeken". Zie ook
     <a href="#scannen">Barcode scannen</a>.
+  </p>
+  <p>
+    <strong>Dezelfde barcode blijft niets opleveren, ook na een nieuwe poging.</strong> Vóór
+    0.1.14 werd ook een leeg resultaat in het geheugen bewaard tot aan de volgende herstart. Was
+    een bron toevallig even onbereikbaar, dan leverde opnieuw scannen gegarandeerd weer niets op
+    zonder dat er één aanvraag vertrok. Nu wordt alleen een geslaagde opzoeking onthouden, en de
+    knop "Opnieuw opzoeken" slaat het geheugen sowieso over.
+  </p>
+  <p>
+    <strong>Ik tik in de tabel op een cel en er gebeurt niets.</strong> Kijk of het vinkje
+    "Rechtstreeks wijzigen in de tabel" bovenaan aanstaat. Staat het aan en gebeurt er nog steeds
+    niets, dan gaat het om een cel die niet in de tabel aanpasbaar is: type, kaftfoto en de kolom
+    "Uitgeleend". Zie <a href="#inline">Wijzigen in de tabel</a>.
   </p>
   <p>
     <strong>De camera start niet.</strong> Je browser geeft alleen toegang tot de camera over

@@ -5,7 +5,7 @@ from flask import Blueprint, current_app, render_template, request, send_from_di
 from sqlalchemy.orm import joinedload
 
 from extensions import db
-from models import CustomField, Media, MediaType
+from models import CONDITIONS, CustomField, Media, MediaType, Owner
 from views.main_helpers import group_by_type, matches_filters, matches_search, sort_key
 
 main_bp = Blueprint("main", __name__)
@@ -19,8 +19,11 @@ main_bp = Blueprint("main", __name__)
 FULL_LIST_COLUMNS = [
     ("cover_image", "Kaft"),
     (None, "Type"),
-    ("series", "Reeks"),
+    # Nummer vóór reeks, en reeks vóór titel: op een telefoon is het nummer het
+    # kortste en het meest onderscheidende gegeven, en zo staat het meteen
+    # links in beeld in plaats van achter een lange reeksnaam.
     ("series_number", "Nr."),
+    ("series", "Reeks"),
     (None, "Titel"),
     ("author", "Auteur"),
     ("musician", "Muzikant"),
@@ -167,6 +170,13 @@ def full_list():
         title_options=sorted(options("title", lambda m: m.title), key=str.lower),
         custom_fields=custom_fields,
         columns=columns,
+        # Nodig voor de keuzelijsten bij het wijzigen in de tabel zelf. Bewust
+        # als eenvoudige woordenboeken: ze gaan als JSON in een data-attribuut
+        # van de tabel, want een los <script>-blok met gegevens zou botsen met
+        # het strikte Content-Security-Policy (zie security.py).
+        owners=[{"id": o.id, "name": o.name}
+                for o in db.session.query(Owner).order_by(Owner.name).all()],
+        conditions=CONDITIONS,
         visible_fields=visible_fields,
         show_comment=show_comment,
         column_count=column_count,

@@ -89,16 +89,104 @@
     year: "Jaar"
   };
 
-  function lookup(code) {
-    setStatus("Barcode " + code + " gelezen. Zeven catalogi tegelijk bevragen…");
+  var laatsteCode = null;
+
+  function lookup(code, opnieuw) {
+    laatsteCode = code;
+    setStatus("Barcode " + code + " gelezen. Alle catalogi tegelijk bevragen…");
     resultEl.hidden = true;
-    fetch(lookupTemplate.replace("CODE", encodeURIComponent(code)))
+    var url = lookupTemplate.replace("CODE", encodeURIComponent(code));
+    if (opnieuw) { url += (url.indexOf("?") === -1 ? "?" : "&") + "opnieuw=1"; }
+    fetch(url)
       .then(function (response) { return response.json(); })
       .then(function (data) { show(code, data); })
       .catch(function () {
-        setStatus("Opzoeken lukte niet. Ga verder en vul de velden zelf in.");
+        setStatus("Opzoeken lukte niet: de app zelf was niet bereikbaar. Ga verder en vul de "
+          + "velden zelf in.");
         show(code, { barcode: code, fields: { barcode: code }, sources: [], links: [] });
       });
+  }
+
+  /* Eén regel in het overzicht van de bronnen. De uitleg per bron komt van de
+     server: die weet welke HTTP-code er terugkwam en hoe lang het duurde. */
+  function reportRow(bron) {
+    var rij = document.createElement("tr");
+    rij.className = "source-" + (bron.status || "empty");
+
+    var naam = document.createElement("td");
+    naam.setAttribute("data-label", "Bron");
+    naam.textContent = bron.label || bron.key || "";
+    rij.appendChild(naam);
+
+    var uitkomst = document.createElement("td");
+    uitkomst.setAttribute("data-label", "Uitkomst");
+    var merk = document.createElement("span");
+    merk.className = "source-badge source-badge-" + (bron.status || "empty");
+    merk.textContent = bron.status_label || bron.status || "";
+    uitkomst.appendChild(merk);
+    rij.appendChild(uitkomst);
+
+    var uitleg = document.createElement("td");
+    uitleg.setAttribute("data-label", "Toelichting");
+    uitleg.className = "wrap-cell";
+    uitleg.appendChild(document.createTextNode(bron.message || ""));
+
+    // De losse aanvragen erachter: adres, HTTP-code en duur. Alleen zichtbaar
+    // als je ze openklapt, want in het gewone geval hoef je ze niet te zien.
+    if (bron.calls && bron.calls.length) {
+      var blok = document.createElement("details");
+      blok.className = "source-calls";
+      var kop = document.createElement("summary");
+      kop.textContent = bron.calls.length === 1 ? "1 aanvraag" : bron.calls.length + " aanvragen";
+      blok.appendChild(kop);
+
+      var lijst = document.createElement("ul");
+      bron.calls.forEach(function (call) {
+        var item = document.createElement("li");
+        var delen = [];
+        delen.push(call.error ? call.error : ("HTTP " + (call.http === null ? "?" : call.http)));
+        if (call.note) { delen.push(call.note); }
+        delen.push(call.ms + " ms");
+        var kopregel = document.createElement("strong");
+        kopregel.textContent = delen.join(" · ");
+        item.appendChild(kopregel);
+        var adres = document.createElement("div");
+        adres.className = "source-url mono";
+        adres.textContent = call.url || "";
+        item.appendChild(adres);
+        lijst.appendChild(item);
+      });
+      blok.appendChild(lijst);
+      uitleg.appendChild(blok);
+    }
+    rij.appendChild(uitleg);
+
+    var tijd = document.createElement("td");
+    tijd.setAttribute("data-label", "Tijd");
+    tijd.className = "mono";
+    tijd.textContent = (bron.ms || 0) + " ms";
+    rij.appendChild(tijd);
+    return rij;
+  }
+
+  function showReport(diagnostics) {
+    var blok = document.getElementById("found-report");
+    var body = document.getElementById("found-report-rows");
+    if (!blok || !body) { return; }
+    body.textContent = "";
+    if (!diagnostics || !diagnostics.length) {
+      blok.hidden = true;
+      return;
+    }
+    diagnostics.forEach(function (bron) { body.appendChild(reportRow(bron)); });
+    blok.hidden = false;
+    // Ging er iets mis of leverde niets iets op, dan staat het overzicht meteen
+    // open: dan is het net de informatie die je nodig hebt.
+    var probleem = diagnostics.some(function (bron) {
+      return bron.status === "error" || bron.status === "timeout";
+    });
+    var treffer = diagnostics.some(function (bron) { return bron.status === "found"; });
+    blok.open = probleem || !treffer;
   }
 
   function show(code, data) {
@@ -122,12 +210,21 @@
         + "de barcode wordt bewaard.";
       list.appendChild(empty);
     } else {
+      var origins = data.origins || {};
       keys.forEach(function (key) {
         var item = document.createElement("li");
         var label = document.createElement("strong");
         label.textContent = (LABELS[key] || key) + ": ";
         item.appendChild(label);
         item.appendChild(document.createTextNode(String(fields[key])));
+        // Erbij zetten wélke bron dit veld aanleverde. Bij tegenstrijdige
+        // gegevens weet je zo meteen wie je moet geloven.
+        if (origins[key]) {
+          var bron = document.createElement("span");
+          bron.className = "muted";
+          bron.textContent = " (" + origins[key] + ")";
+          item.appendChild(bron);
+        }
         list.appendChild(item);
       });
     }
@@ -141,7 +238,13 @@
     if (!sources.length && data.tried && data.tried.length) {
       delen.push("Bevraagd zonder resultaat: " + data.tried.join(", ") + ".");
     }
+    if (data.cached) {
+      delen.push("Dit antwoord kwam uit het geheugen van een eerdere opzoeking; "
+        + "met \u201cOpnieuw opzoeken\u201d worden alle bronnen echt opnieuw bevraagd.");
+    }
     sourceEl.textContent = delen.join(" ");
+
+    showReport(data.diagnostics);
 
     var linkBlok = document.getElementById("found-links");
     var linkLijst = document.getElementById("found-links-list");
@@ -325,6 +428,15 @@
   startBtn.addEventListener("click", start);
   stopBtn.addEventListener("click", function () { stop(); setStatus("Camera gestopt."); });
   document.getElementById("rescan-btn").addEventListener("click", start);
+
+  // Alle bronnen echt opnieuw bevragen, zonder het bewaarde antwoord. Nuttig
+  // als er net één bron een foutcode gaf: dat is vaak tijdelijk.
+  var retryBtn = document.getElementById("retry-btn");
+  if (retryBtn) {
+    retryBtn.addEventListener("click", function () {
+      if (laatsteCode) { lookup(laatsteCode, true); }
+    });
+  }
 
   manualForm.addEventListener("submit", function (event) {
     event.preventDefault();

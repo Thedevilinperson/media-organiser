@@ -533,8 +533,27 @@ table.data-table.compact td a:hover { text-decoration: underline; }
   }
   table.data-table.compact td::before { content: none; }
   table.data-table.compact th { padding: 6px 6px 6px 0; }
-  table.data-table.compact td:first-child { max-width: 42%; }
   .comment-cell { max-width: none; }
+
+  /* Lange reeksnamen en lange titels mogen hier over meerdere regels lopen.
+     Met nowrap (de standaard voor .data-table td) werd de tabel breder dan het
+     scherm zodra er één album met een lange titel tussen stond, en moest je
+     voor élke rij naar rechts schuiven. Afbreken kost een regel hoogte, maar
+     houdt de drie kolommen samen op één scherm. */
+  table.data-table.compact th,
+  table.data-table.compact td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Vaste, smalle breedtes voor de korte kolommen, zodat de titel de rest
+     krijgt in plaats van omgekeerd. Het nummer staat vooraan en is met drie
+     cijfers uitgeteld; het jaar met vier. */
+  table.data-table.compact .col-nr { width: 3.2em; text-align: right; padding-right: 10px; }
+  table.data-table.compact .col-year { width: 3.6em; }
+  table.data-table.compact .col-series { width: 33%; }
+  table.data-table.compact .col-title { width: auto; }
+  table.data-table.compact .lent-mark { margin-left: 4px; }
 }
 
 /* Markering van een verplicht veld */
@@ -612,3 +631,92 @@ table.data-table.compact td a:hover { text-decoration: underline; }
   .copy-source .search-row { flex-wrap: wrap; }
   .copy-source .search-row select { flex: 1 1 100%; }
 }
+
+
+/* ---------- Wijzigen rechtstreeks in de tabel (volledige lijst) ---------- */
+/* De cellen zien er in leesmodus onveranderd uit. Pas als "Rechtstreeks
+   wijzigen" aanstaat, krijgen ze een stippellijn: genoeg om te zien dat er iets
+   te doen valt, weinig genoeg om een lijst van honderden rijen niet druk te
+   maken. */
+.table-toolbar {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.inline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.inline-toggle input { width: auto; margin: 0; }
+
+.inline-status { font-size: 12.5px; color: var(--ink-soft); }
+.inline-status.ok { color: var(--success-ink); }
+.inline-status.fout { color: var(--danger); font-weight: 600; }
+
+.inline-hint { margin: 0 0 12px; font-size: 12.5px; }
+
+table.data-table.editing td.edit-cell {
+  cursor: pointer;
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+table.data-table.editing td.edit-cell:hover {
+  background: var(--accent-soft);
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+table.data-table td.edit-cell.editing-cell { background: #fff; box-shadow: none; }
+table.data-table td.edit-cell.saving { opacity: 0.55; }
+table.data-table td.edit-cell.saved { background: var(--success-soft); }
+table.data-table td.edit-cell.failed { background: var(--danger-soft); }
+
+td.edit-cell input,
+td.edit-cell select,
+td.edit-cell textarea {
+  width: 100%;
+  min-width: 70px;
+  padding: 3px 6px;
+  font-size: 13px;
+  border-radius: 2px;
+}
+td.edit-cell textarea { min-width: 180px; }
+
+/* ---------- Overzicht van de bronnen op de scanpagina ---------- */
+.source-report { margin: 10px 0 4px; }
+.source-report > summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  padding: 4px 0;
+}
+.source-report > summary:hover { color: var(--ink); }
+.source-report .muted { margin-top: 2px; }
+
+table.source-table { font-size: 12.5px; }
+table.source-table td { vertical-align: top; }
+
+.source-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  background: var(--board);
+  color: var(--ink-soft);
+}
+.source-badge-found { background: var(--success-soft); color: var(--success-ink); border-color: var(--success-ink); }
+.source-badge-error { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+.source-badge-timeout { background: var(--accent-soft); color: var(--accent-dark); border-color: var(--accent); }
+
+.source-calls > summary { cursor: pointer; font-size: 11.5px; color: var(--ink-soft); }
+.source-calls ul { margin: 4px 0 0; padding-left: 16px; }
+.source-calls li { margin-bottom: 5px; font-size: 11.5px; }
+.source-url { word-break: break-all; color: var(--ink-soft); font-size: 11px; }

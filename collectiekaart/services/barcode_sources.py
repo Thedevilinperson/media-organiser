@@ -18,10 +18,14 @@ De bronnen, en wat ze goed doen:
 - Wikidata ........... geeft als enige vaak reeks + nummer bij stripalbums
 - BnF ................ Franse nationale bibliotheek, voor Franstalige BD en
                        voor albums waarvan de vertaling het ISBN deelt
+- DNB ................ Deutsche Nationalbibliothek, voor Duitstalige uitgaven
+                       en voor albums die enkel daar beschreven staan
 - openBD ............. Japanse uitgaven, voor manga in het origineel
 - MusicBrainz ........ EAN-codes van cd's en dvd's; die staan in géén enkele
                        boekencatalogus, en zijn de meest voorkomende reden dat
                        een scan vroeger niets opleverde
+- UPCitemdb .......... algemene EAN-databank; vangt dvd-boxen, verzamelaars-
+                       uitgaven en cd's op die MusicBrainz niet kent
 
 Voor bronnen zonder open interface (Stripinfo, LastDodo, Boekwinkeltjes) wordt
 er niets geschraapt. Die geven een zoeklink terug, net zoals bij de richtprijs.
@@ -30,11 +34,20 @@ Dat is dezelfde bewuste keuze als in `value_estimation.py`.
 Alle bronnen falen zacht: valt er één weg, dan blijven de andere gewoon werken.
 Ze worden parallel bevraagd met een gezamenlijke tijdslimiet, zodat het geheel
 niet trager is dan de traagste bron die op tijd antwoordt.
+
+Rapportering per bron
+---------------------
+Sinds 0.1.14 houdt elke bron bij wat er precies gebeurde: welke adressen
+bevraagd werden, welke HTTP-code er terugkwam, hoe lang het duurde en of er
+iets bruikbaars uit kwam. Dat verschil is belangrijk: "de bron antwoordde netjes
+dat ze deze code niet kent" is iets heel anders dan "de bron gaf een 403 en werd
+dus nooit echt bevraagd". Vroeger zagen die twee er op het scherm identiek uit,
+waardoor een storing als "niets gevonden" gelezen werd. Zie `SourceReport`.
 """
 import re
 import time
 import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 from urllib.parse import quote, urlencode
 
 import requests
@@ -44,7 +57,7 @@ from version import __version__
 # Per bron kort; het geheel wordt begrensd door TOTAL_BUDGET hieronder.
 TIMEOUT = 7
 SPARQL_TIMEOUT = 12
-TOTAL_BUDGET = 14  # seconden die het volledige opzoeken hoogstens mag duren
+TOTAL_BUDGET = 16  # seconden die het volledige opzoeken hoogstens mag duren
 
 # Wikidata en MusicBrainz vragen uitdrukkelijk om een herkenbare User-Agent
 # met een contactmogelijkheid. Zonder die kop knippen ze de verbinding door.
@@ -53,6 +66,123 @@ USER_AGENT = (
     "https://github.com/Thedevilinperson/media-organiser)"
 )
 HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.6"}
+
+
+# ---------------------------------------------------------------------------
+# Rapport per bron
+# ---------------------------------------------------------------------------
+STATUS_LABELS = {
+    "found": "gevonden",
+    "empty": "niets gevonden",
+    "error": "fout",
+    "timeout": "te traag",
+    "skipped": "overgeslagen",
+}
+
+
+class SourceReport:
+    """
+    Wat één bron gedaan heeft. Wordt onveranderd doorgegeven aan de scanpagina,
+    zodat je daar kan zien of een lege uitkomst een storing was of gewoon een
+    code die de bron niet kent.
+    """
+
+    def __init__(self, key, label):
+        self.key = key
+        self.label = label
+        self.status = "empty"
+        self.message = ""
+        self.calls = []
+        self.fields = {}
+        self.ms = 0
+        self.blocked = False
+
+    def geblokkeerd(self):
+        """
+        Of het nog zin heeft deze bron verder te bevragen.
+
+        Weigert een bron twee keer na elkaar (401, 403 of 429), dan gaat ze dat
+        de derde keer ook doen. Vroeger werden alle ISBN-vormen en alle
+        landcodes toch afgewerkt; bij Google Books alleen al waren dat zeven
+        aanvragen die elk in hun eigen time-out liepen, wat het opzoeken
+        onnodig traag maakte terwijl het antwoord al vaststond.
+        """
+        geweigerd = [c for c in self.calls if c["http"] in (401, 403, 429)]
+        return len(geweigerd) >= 2
+
+    def add_call(self, url, http_status=None, error=None, ms=0, note=None):
+        self.calls.append({
+            "url": str(url)[:220],
+            "http": http_status,
+            "error": error,
+            "ms": int(ms),
+            "note": note,
+        })
+
+    def note_last(self, note):
+        if self.calls:
+            self.calls[-1]["note"] = note
+
+    def skip(self, reason):
+        self.status = "skipped"
+        self.message = reason
+
+    def _summarise(self):
+        """Bouwt een leesbare samenvatting op uit de losse aanvragen."""
+        if self.status in ("skipped", "timeout"):
+            return
+        if self.fields:
+            self.status = "found"
+            self.message = "leverde: " + ", ".join(sorted(self.fields))
+            return
+
+        gelukt = [c for c in self.calls if c["error"] is None and c["http"] and c["http"] < 400]
+        mislukt = [c for c in self.calls if c["error"] is not None or (c["http"] or 0) >= 400]
+        if not self.calls:
+            self.status = "error"
+            self.message = "geen enkele aanvraag verstuurd"
+        elif gelukt:
+            self.status = "empty"
+            self.message = "antwoordde, maar kent deze code niet"
+            if mislukt:
+                self.message += f" ({len(mislukt)} van de {len(self.calls)} aanvragen mislukte)"
+        else:
+            self.status = "error"
+            echt = [c for c in mislukt if c["http"] is not None] or mislukt
+            eerste = echt[0]
+            self.message = eerste["error"] or _explain_http(eerste["http"])
+            if self.blocked:
+                self.message += " — de overige aanvragen zijn overgeslagen"
+
+    def as_dict(self):
+        self._summarise()
+        return {
+            "key": self.key,
+            "label": self.label,
+            "status": self.status,
+            "status_label": STATUS_LABELS.get(self.status, self.status),
+            "message": self.message,
+            "ms": int(self.ms),
+            "fields": sorted(self.fields),
+            "calls": self.calls,
+        }
+
+
+def _explain_http(code):
+    """Vertaalt een HTTP-code naar iets waar je zonder handboek iets aan hebt."""
+    if code is None:
+        return "geen antwoord"
+    if code == 400:
+        return "HTTP 400 — de bron begreep de zoekopdracht niet"
+    if code in (401, 403):
+        return f"HTTP {code} — de bron weigert deze aanvraag (geen storing, een keuze van hen)"
+    if code == 404:
+        return "HTTP 404 — dat adres bestaat niet (meer) bij deze bron"
+    if code == 429:
+        return "HTTP 429 — te veel aanvragen na elkaar; even wachten helpt"
+    if 500 <= code < 600:
+        return f"HTTP {code} — storing bij de bron zelf"
+    return f"HTTP {code}"
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +323,7 @@ def _all_text(node, *names):
 # ---------------------------------------------------------------------------
 # 1. Google Books
 # ---------------------------------------------------------------------------
-def google_books(code):
+def google_books(code, report):
     """
     De Google Books API.
 
@@ -205,16 +335,14 @@ def google_books(code):
     de lege resultaten in oudere versies. We geven het land daarom expliciet
     mee, met België eerst.
     """
-    if not code.variants:
-        return {}
-
     for isbn in code.variants:
         for country in ("BE", "NL", None):
             params = {"q": f"isbn:{isbn}", "maxResults": 3}
             if country:
                 params["country"] = country
-            data = _get_json("https://www.googleapis.com/books/v1/volumes", params)
+            data = _get_json("https://www.googleapis.com/books/v1/volumes", params, report=report)
             items = (data or {}).get("items") or []
+            report.note_last(f"{len(items)} treffer(s)" if data is not None else None)
             if items:
                 return _google_item(items[0])
 
@@ -223,8 +351,10 @@ def google_books(code):
     data = _get_json(
         "https://www.googleapis.com/books/v1/volumes",
         {"q": code.raw, "maxResults": 1, "country": "BE"},
+        report=report,
     )
     items = (data or {}).get("items") or []
+    report.note_last(f"{len(items)} treffer(s) op de code als zoekterm" if data is not None else None)
     return _google_item(items[0]) if items else {}
 
 
@@ -248,21 +378,25 @@ def _google_item(item):
 # ---------------------------------------------------------------------------
 # 2. Open Library (drie ingangen)
 # ---------------------------------------------------------------------------
-def open_library(code):
+def open_library(code, report):
     for isbn in code.variants or [code.raw]:
-        found = _open_library_books(isbn) or _open_library_isbn(isbn) or _open_library_search(isbn)
+        found = (_open_library_books(isbn, report)
+                 or _open_library_isbn(isbn, report)
+                 or _open_library_search(isbn, report))
         if found:
             return found
     return {}
 
 
-def _open_library_books(isbn):
+def _open_library_books(isbn, report):
     data = _get_json(
         "https://openlibrary.org/api/books",
         {"bibkeys": f"ISBN:{isbn}", "format": "json", "jscmd": "data"},
+        report=report,
     )
     book = (data or {}).get(f"ISBN:{isbn}")
     if not book:
+        report.note_last("geen record voor dit ISBN" if data is not None else None)
         return {}
 
     found = {}
@@ -280,9 +414,9 @@ def _open_library_books(isbn):
     return found
 
 
-def _open_library_isbn(isbn):
+def _open_library_isbn(isbn, report):
     """De /isbn/-ingang; die kent soms een reeks die de andere niet geeft."""
-    data = _get_json(f"https://openlibrary.org/isbn/{quote(isbn)}.json", None)
+    data = _get_json(f"https://openlibrary.org/isbn/{quote(isbn)}.json", None, report=report)
     if not isinstance(data, dict) or not data.get("title"):
         return {}
 
@@ -300,9 +434,10 @@ def _open_library_isbn(isbn):
     return {k: v for k, v in found.items() if v}
 
 
-def _open_library_search(isbn):
-    data = _get_json("https://openlibrary.org/search.json", {"isbn": isbn, "limit": 1})
+def _open_library_search(isbn, report):
+    data = _get_json("https://openlibrary.org/search.json", {"isbn": isbn, "limit": 1}, report=report)
     docs = (data or {}).get("docs") or []
+    report.note_last(f"{len(docs)} treffer(s)" if data is not None else None)
     if not docs:
         return {}
     doc = docs[0]
@@ -320,7 +455,16 @@ def _open_library_search(isbn):
 # ---------------------------------------------------------------------------
 # 3. Koninklijke Bibliotheek (NL) — GGC via SRU
 # ---------------------------------------------------------------------------
-def kb_ggc(code):
+# De GGC aanvaardt niet één maar meerdere schrijfwijzen voor een ISBN-zoekvraag,
+# en welke ervan werkt hangt af van de versie van hun SRU-laag. Vroeger werd er
+# maar één vorm geprobeerd; klopte die niet, dan kwam er een lege lijst terug
+# die niet van "onbekend ISBN" te onderscheiden was. Nu worden ze na elkaar
+# geprobeerd tot er een record uitkomt, en staat in het rapport welke vorm het
+# deed.
+KB_QUERIES = ["isbn={isbn}", 'isbn any "{isbn}"', "dc.identifier={isbn}"]
+
+
+def kb_ggc(code, report):
     """
     De Gemeenschappelijke Geautomatiseerde Catalogus van de Koninklijke
     Bibliotheek in Den Haag, via hun open SRU-interface. Dit is de Nederlandse
@@ -329,29 +473,32 @@ def kb_ggc(code):
     Books lang niet altijd het geval is.
     """
     for isbn in code.variants:
-        root = _get_xml(
-            "https://jsru.kb.nl/sru/sru",
-            {
-                "operation": "searchRetrieve",
-                "version": "1.2",
-                "x-collection": "GGC",
-                "recordSchema": "dc",
-                "maximumRecords": "1",
-                "query": f"isbn={isbn}",
-            },
-        )
-        if root is None:
-            continue
-        found = _dublin_core(root)
-        if found:
-            return found
+        for vorm in KB_QUERIES:
+            root = _get_xml(
+                "https://jsru.kb.nl/sru/sru",
+                {
+                    "operation": "searchRetrieve",
+                    "version": "1.2",
+                    "x-collection": "GGC",
+                    "recordSchema": "dc",
+                    "maximumRecords": "1",
+                    "query": vorm.format(isbn=isbn),
+                },
+                report=report,
+            )
+            if root is None:
+                continue
+            found = _dublin_core(root)
+            report.note_last("record gevonden" if found else "0 records")
+            if found:
+                return found
     return {}
 
 
 # ---------------------------------------------------------------------------
 # 4. Bibliothèque nationale de France — SRU
 # ---------------------------------------------------------------------------
-def bnf(code):
+def bnf(code, report):
     """
     Voor Franstalige albums. Veel Vlaamse en Nederlandse strips zijn
     vertalingen; staat de Nederlandse uitgave nergens, dan levert de Franse
@@ -367,10 +514,42 @@ def bnf(code):
                 "maximumRecords": "1",
                 "query": f'bib.isbn all "{isbn}"',
             },
+            report=report,
         )
         if root is None:
             continue
         found = _dublin_core(root)
+        report.note_last("record gevonden" if found else "0 records")
+        if found:
+            return found
+    return {}
+
+
+# ---------------------------------------------------------------------------
+# 5. Deutsche Nationalbibliothek — SRU
+# ---------------------------------------------------------------------------
+def dnb(code, report):
+    """
+    De Duitse nationale bibliografie. Nieuw in 0.1.14. Voegt weinig toe voor
+    een Nederlands album, maar vangt Duitstalige manga-uitgaven en comics op —
+    en het kost niets, want alle bronnen worden toch naast elkaar bevraagd.
+    """
+    for isbn in code.variants:
+        root = _get_xml(
+            "https://services.dnb.de/sru/dnb",
+            {
+                "version": "1.1",
+                "operation": "searchRetrieve",
+                "query": f"NUM={isbn}",
+                "recordSchema": "oai_dc",
+                "maximumRecords": "1",
+            },
+            report=report,
+        )
+        if root is None:
+            continue
+        found = _dublin_core(root)
+        report.note_last("record gevonden" if found else "0 records")
         if found:
             return found
     return {}
@@ -408,9 +587,9 @@ def _dublin_core(root):
 
 
 # ---------------------------------------------------------------------------
-# 5. Wikidata — de enige bron die vaak reeks én nummer kent
+# 6. Wikidata — de enige bron die vaak reeks én nummer kent
 # ---------------------------------------------------------------------------
-def wikidata(code):
+def wikidata(code, report):
     """
     Stripalbums staan verrassend goed op Wikidata, mét "onderdeel van de reeks"
     en het nummer daarin. Dat zijn net de twee velden die de boekencatalogi
@@ -420,6 +599,7 @@ def wikidata(code):
     Daarom wordt er op de genormaliseerde vorm vergeleken.
     """
     if not code.isbn13:
+        report.skip("geen ISBN: Wikidata kent deze code niet als boek")
         return {}
 
     isbn13 = code.isbn13
@@ -440,8 +620,10 @@ SELECT ?itemLabel ?authorLabel ?date ?seriesLabel ?ordinal WHERE {{
         "https://query.wikidata.org/sparql",
         {"query": query, "format": "json"},
         timeout=SPARQL_TIMEOUT,
+        report=report,
     )
     rows = ((data or {}).get("results") or {}).get("bindings") or []
+    report.note_last(f"{len(rows)} treffer(s)" if data is not None else None)
     if not rows:
         return {}
 
@@ -466,13 +648,15 @@ SELECT ?itemLabel ?authorLabel ?date ?seriesLabel ?ordinal WHERE {{
 
 
 # ---------------------------------------------------------------------------
-# 6. openBD — Japanse uitgaven (manga in het origineel)
+# 7. openBD — Japanse uitgaven (manga in het origineel)
 # ---------------------------------------------------------------------------
-def openbd(code):
+def openbd(code, report):
     if not code.isbn13 or code.region != "jp":
+        report.skip("enkel voor Japanse ISBN's (978-4…)")
         return {}
-    data = _get_json("https://api.openbd.jp/v1/get", {"isbn": code.isbn13})
+    data = _get_json("https://api.openbd.jp/v1/get", {"isbn": code.isbn13}, report=report)
     if not isinstance(data, list) or not data or not data[0]:
+        report.note_last("geen record" if data is not None else None)
         return {}
 
     summary = (data[0] or {}).get("summary") or {}
@@ -490,22 +674,25 @@ def openbd(code):
 
 
 # ---------------------------------------------------------------------------
-# 7. MusicBrainz — cd's en dvd's
+# 8. MusicBrainz — cd's en dvd's
 # ---------------------------------------------------------------------------
-def musicbrainz(code):
+def musicbrainz(code, report):
     """
     Een cd of dvd draagt een gewone EAN, geen ISBN. Die code staat in geen
     enkele boekencatalogus, en dat is veruit de vaakst voorkomende reden dat
     een scan vroeger niets opleverde. MusicBrainz kent wél barcodes.
     """
     if code.is_isbn or len(code.raw) < 12:
+        report.skip("enkel voor EAN-codes van cd's en dvd's")
         return {}
 
     data = _get_json(
         "https://musicbrainz.org/ws/2/release",
         {"query": f"barcode:{code.raw}", "fmt": "json", "limit": "1"},
+        report=report,
     )
     releases = (data or {}).get("releases") or []
+    report.note_last(f"{len(releases)} treffer(s)" if data is not None else None)
     if not releases:
         return {}
 
@@ -518,6 +705,51 @@ def musicbrainz(code):
         found["musician"] = ", ".join(artists[:3])
         found["author"] = found["musician"]
     year = _year(release.get("date"))
+    if year:
+        found["year"] = year
+    return found
+
+
+# ---------------------------------------------------------------------------
+# 9. UPCitemdb — algemene EAN-databank
+# ---------------------------------------------------------------------------
+def upcitemdb(code, report):
+    """
+    Een vrij te gebruiken proefingang op een algemene barcodedatabank. Nieuw in
+    0.1.14, en bedoeld voor precies dat ene geval waar alle andere bronnen op
+    stuklopen: een dvd-box, een verzamelaarsuitgave of een cd die MusicBrainz
+    niet kent. De gegevens zijn ruwer dan die van een bibliotheek — vaak enkel
+    een titel zoals ze in de winkel heet — maar dat is nog altijd beter dan een
+    leeg formulier.
+
+    De proefingang is uitdrukkelijk begrensd in aantal aanvragen per dag. Loop
+    je daartegen aan, dan komt er een 429 terug en zie je dat gewoon staan bij
+    de bronnen.
+    """
+    if code.is_isbn or len(code.raw) < 12:
+        report.skip("enkel voor EAN-codes van cd's, dvd's en dozen")
+        return {}
+
+    data = _get_json(
+        "https://api.upcitemdb.com/prod/trial/lookup",
+        {"upc": code.raw},
+        report=report,
+    )
+    items = (data or {}).get("items") or []
+    report.note_last(f"{len(items)} treffer(s)" if data is not None else None)
+    if not items:
+        return {}
+
+    item = items[0]
+    found = {}
+    titel = _clean(item.get("title"))
+    if titel:
+        found["title"] = titel
+    maker = _clean(item.get("artist")) or _clean(item.get("brand"))
+    if maker:
+        found["author"] = maker
+        found["musician"] = maker
+    year = _year(item.get("publish_date") or item.get("title"))
     if year:
         found["year"] = year
     return found
@@ -589,25 +821,71 @@ def search_links(code, title=None):
 # ---------------------------------------------------------------------------
 # Netwerk
 # ---------------------------------------------------------------------------
-def _get_json(url, params, timeout=TIMEOUT):
+def _request(url, params, timeout, accept, report):
+    """
+    Eén HTTP-aanvraag, met alles wat er misging netjes genoteerd in het
+    rapport. Geeft het antwoord terug, of None als er niets bruikbaars kwam.
+    """
+    if report is not None and report.geblokkeerd():
+        if not report.blocked:
+            report.blocked = True
+            report.add_call(url, None, "verdere aanvragen overgeslagen: deze bron weigerde er al twee", 0)
+        return None
+
+    started = time.monotonic()
+    volledig = url + (("?" + urlencode(params, doseq=True)) if params else "")
     try:
         resp = requests.get(url, params=params, timeout=timeout,
-                            headers={**HEADERS, "Accept": "application/json"})
-        if resp.status_code >= 400:
-            return None
+                            headers={**HEADERS, "Accept": accept})
+    except requests.exceptions.Timeout:
+        report and report.add_call(volledig, None, f"geen antwoord binnen {timeout} s",
+                                   _ms(started))
+        return None
+    except requests.exceptions.SSLError:
+        report and report.add_call(volledig, None, "beveiligde verbinding mislukt", _ms(started))
+        return None
+    except requests.exceptions.ConnectionError:
+        report and report.add_call(volledig, None,
+                                   "geen verbinding (bron onbereikbaar of geen internet)",
+                                   _ms(started))
+        return None
+    except Exception as exc:  # pragma: no cover — vangnet, mag nooit doorslaan
+        report and report.add_call(volledig, None, f"onverwachte fout: {type(exc).__name__}",
+                                   _ms(started))
+        return None
+
+    duur = _ms(started)
+    adres = getattr(resp, "url", volledig) or volledig
+    if resp.status_code >= 400:
+        report and report.add_call(adres, resp.status_code, None, duur)
+        return None
+    report and report.add_call(adres, resp.status_code, None, duur)
+    return resp
+
+
+def _ms(started):
+    return round((time.monotonic() - started) * 1000)
+
+
+def _get_json(url, params, timeout=TIMEOUT, report=None):
+    resp = _request(url, params, timeout, "application/json", report)
+    if resp is None:
+        return None
+    try:
         return resp.json()
-    except Exception:
+    except ValueError:
+        report and report.note_last("antwoord was geen geldige JSON")
         return None
 
 
-def _get_xml(url, params, timeout=TIMEOUT):
+def _get_xml(url, params, timeout=TIMEOUT, report=None):
+    resp = _request(url, params, timeout, "application/xml", report)
+    if resp is None:
+        return None
     try:
-        resp = requests.get(url, params=params, timeout=timeout,
-                            headers={**HEADERS, "Accept": "application/xml"})
-        if resp.status_code >= 400:
-            return None
         return ET.fromstring(resp.content)
-    except Exception:
+    except ET.ParseError:
+        report and report.note_last("antwoord was geen geldige XML")
         return None
 
 
@@ -621,29 +899,37 @@ SOURCES = {
     "kb": ("Koninklijke Bibliotheek (GGC)", kb_ggc),
     "wikidata": ("Wikidata", wikidata),
     "bnf": ("Bibliothèque nationale de France", bnf),
+    "dnb": ("Deutsche Nationalbibliothek", dnb),
     "openbd": ("openBD (Japan)", openbd),
     "musicbrainz": ("MusicBrainz", musicbrainz),
+    "upcitemdb": ("UPCitemdb", upcitemdb),
 }
 
 # Welke bron als eerste geloofd wordt bij tegenstrijdige gegevens, per
 # taalgebied van het ISBN. Een Nederlands boek beschrijft de KB nu eenmaal
 # beter dan Google, een Frans album de BnF.
 PRIORITY = {
-    "nl": ["kb", "google", "openlibrary", "wikidata", "bnf", "openbd", "musicbrainz"],
-    "fr": ["bnf", "google", "kb", "openlibrary", "wikidata", "openbd", "musicbrainz"],
-    "jp": ["openbd", "google", "openlibrary", "wikidata", "kb", "bnf", "musicbrainz"],
-    "de": ["google", "openlibrary", "kb", "wikidata", "bnf", "openbd", "musicbrainz"],
-    "en": ["openlibrary", "google", "wikidata", "kb", "bnf", "openbd", "musicbrainz"],
-    "onbekend": ["musicbrainz", "google", "openlibrary", "kb", "wikidata", "bnf", "openbd"],
+    "nl": ["kb", "google", "openlibrary", "wikidata", "bnf", "dnb", "openbd", "musicbrainz", "upcitemdb"],
+    "fr": ["bnf", "google", "kb", "openlibrary", "wikidata", "dnb", "openbd", "musicbrainz", "upcitemdb"],
+    "jp": ["openbd", "google", "openlibrary", "wikidata", "kb", "bnf", "dnb", "musicbrainz", "upcitemdb"],
+    "de": ["dnb", "google", "openlibrary", "kb", "wikidata", "bnf", "openbd", "musicbrainz", "upcitemdb"],
+    "en": ["openlibrary", "google", "wikidata", "kb", "bnf", "dnb", "openbd", "musicbrainz", "upcitemdb"],
+    "onbekend": ["musicbrainz", "upcitemdb", "google", "openlibrary", "kb", "wikidata", "bnf", "dnb", "openbd"],
 }
 
 # Reeks en nummer verdienen een eigen volgorde: Wikidata vult die als enige
 # betrouwbaar in, ook al is haar titel soms minder bruikbaar.
 FIELD_PRIORITY = {
-    "series": ["wikidata", "openbd", "kb", "openlibrary", "bnf", "google"],
-    "series_number": ["wikidata", "openbd", "kb", "openlibrary", "bnf", "google"],
-    "musician": ["musicbrainz"],
+    "series": ["wikidata", "openbd", "kb", "openlibrary", "bnf", "dnb", "google"],
+    "series_number": ["wikidata", "openbd", "kb", "openlibrary", "bnf", "dnb", "google"],
+    "musician": ["musicbrainz", "upcitemdb"],
 }
+
+
+def _volgorde(region):
+    """De prioriteitslijst, aangevuld met bronnen die er niet in vermeld staan."""
+    basis = PRIORITY.get(region, PRIORITY["onbekend"])
+    return basis + [naam for naam in SOURCES if naam not in basis]
 
 
 def _relevant_sources(code):
@@ -651,11 +937,11 @@ def _relevant_sources(code):
     if not code.raw:
         return []
     if code.is_isbn:
-        namen = ["google", "openlibrary", "kb", "wikidata", "bnf"]
+        namen = ["google", "openlibrary", "kb", "wikidata", "bnf", "dnb"]
         if code.region == "jp":
             namen.append("openbd")
         return namen
-    return ["musicbrainz", "google"]
+    return ["musicbrainz", "upcitemdb", "google"]
 
 
 def relevant_sources(code):
@@ -665,33 +951,62 @@ def relevant_sources(code):
 
 def gather(code):
     """
-    Bevraagt alle zinvolle bronnen parallel en geeft per bron terug wat ze
-    opleverde. Parallel, omdat zeven bronnen na elkaar bevragen op een
-    Raspberry Pi al snel een halve minuut duurt; samen blijft het onder de
-    tijdslimiet hierboven.
+    Bevraagt alle zinvolle bronnen parallel.
+
+    Geeft twee dingen terug:
+      resultaten  {bronnaam: velden} voor de bronnen die iets opleverden
+      rapporten   één SourceReport per bron, ook voor wie niets vond of stuk
+                  ging — dat is precies wat de scanpagina toont
+
+    Parallel, omdat negen bronnen na elkaar bevragen op een Raspberry Pi al
+    snel een minuut duurt; samen blijft het onder de tijdslimiet hierboven.
     """
     namen = _relevant_sources(code)
+    rapporten = []
     if not namen:
-        return {}
+        return {}, rapporten
 
+    reports = {naam: SourceReport(naam, SOURCES[naam][0]) for naam in namen}
     resultaten = {}
-    deadline = time.monotonic() + TOTAL_BUDGET
+
+    def run(naam):
+        gestart = time.monotonic()
+        report = reports[naam]
+        try:
+            velden = SOURCES[naam][1](code, report) or {}
+        except Exception as exc:  # een stukke bron mag de rest niet meeslepen
+            report.status = "error"
+            report.message = f"onverwachte fout in de bron: {type(exc).__name__}"
+            velden = {}
+        report.ms = _ms(gestart)
+        report.fields = velden
+        return velden
+
     pool = ThreadPoolExecutor(max_workers=len(namen))
     try:
-        futures = {pool.submit(SOURCES[naam][1], code): naam for naam in namen}
-        for future, naam in futures.items():
-            resterend = max(0.1, deadline - time.monotonic())
+        futures = {pool.submit(run, naam): naam for naam in namen}
+        klaar, nog_bezig = wait(list(futures), timeout=TOTAL_BUDGET)
+        for future in klaar:
+            naam = futures[future]
             try:
-                velden = future.result(timeout=resterend) or {}
+                velden = future.result() or {}
             except Exception:
-                velden = {}  # traag of stuk: de andere bronnen blijven gelden
+                velden = {}
             if velden:
                 resultaten[naam] = velden
+        for future in nog_bezig:
+            naam = futures[future]
+            reports[naam].status = "timeout"
+            reports[naam].message = (
+                f"nog geen antwoord na {TOTAL_BUDGET} s; de andere bronnen tellen wel mee"
+            )
     finally:
         # Niet wachten op een bron die over haar tijd gaat; requests kapt zelf
         # af op haar eigen time-out en de thread verdwijnt daarna vanzelf.
         pool.shutdown(wait=False)
-    return resultaten
+
+    rapporten = [reports[naam] for naam in namen]
+    return resultaten, rapporten
 
 
 def merge(code, resultaten):
@@ -700,19 +1015,22 @@ def merge(code, resultaten):
     dit taalgebied het meest betrouwbaar is; velden die een bron niet kent,
     worden aangevuld door de volgende.
     """
-    volgorde = PRIORITY.get(code.region, PRIORITY["onbekend"])
+    volgorde = _volgorde(code.region)
     velden = {}
+    herkomst = {}
     for veld in ("title", "series", "series_number", "author", "musician", "year"):
         for naam in FIELD_PRIORITY.get(veld, volgorde):
             waarde = (resultaten.get(naam) or {}).get(veld)
             if waarde:
                 velden[veld] = waarde
+                herkomst[veld] = naam
                 break
         if veld not in velden:
             for naam in volgorde:
                 waarde = (resultaten.get(naam) or {}).get(veld)
                 if waarde:
                     velden[veld] = waarde
+                    herkomst[veld] = naam
                     break
 
     # Staat de reeks nog in de titel ("De Kiekeboes 12 - Het witte bloed"),
@@ -721,8 +1039,10 @@ def merge(code, resultaten):
         reeks, nummer, resttitel = _split_series_entry(velden["title"])
         if reeks:
             velden["series"] = reeks
+            herkomst["series"] = herkomst.get("title", "")
             if resttitel:
                 velden["title"] = resttitel
             if nummer and not velden.get("series_number"):
                 velden["series_number"] = nummer
-    return velden
+                herkomst["series_number"] = herkomst.get("title", "")
+    return velden, herkomst

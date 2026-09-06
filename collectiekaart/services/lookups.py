@@ -65,33 +65,41 @@ _CACHE = {}
 _CACHE_MAX = 200
 
 
-def lookup_barcode_detailed(code):
+def lookup_barcode_detailed(code, use_cache=True):
     """
     Zoekt een ISBN of EAN op bij alle bronnen die er iets over kunnen weten.
 
     Geeft terug:
       barcode        de genormaliseerde code
       fields         de samengevoegde velden, klaar voor het formulier
+      origins        per veld welke bron het aanleverde
       sources        de labels van de bronnen die effectief iets opleverden
       tried          de labels van alle bevraagde bronnen
+      diagnostics    per bron wat er gebeurde: status, HTTP-code, duur, adres
       links          zoeklinks naar sites zonder open interface
       found          of er iets bruikbaars uit kwam
       kind           'isbn', 'ean' of 'onbekend'
       suggested_type een gok voor het mediatype ('boek', 'strip', 'cd')
 
     Elke bron faalt zacht. Ligt er één plat of is ze traag, dan blijven de
-    andere gewoon gelden.
+    andere gewoon gelden. Wat er per bron misging staat in `diagnostics`, zodat
+    een storing op het scherm te onderscheiden is van een code die echt nergens
+    beschreven staat.
     """
     info = Code(code)
     if not info.raw:
-        return {"barcode": "", "fields": {}, "sources": [], "tried": [],
-                "links": [], "found": False, "kind": "onbekend", "suggested_type": None}
+        return {"barcode": "", "fields": {}, "origins": {}, "sources": [], "tried": [],
+                "diagnostics": [], "links": [], "found": False,
+                "kind": "onbekend", "suggested_type": None}
 
-    if info.raw in _CACHE:
-        return _CACHE[info.raw]
+    if use_cache and info.raw in _CACHE:
+        antwoord = dict(_CACHE[info.raw])
+        antwoord["cached"] = True
+        return antwoord
 
-    resultaten = barcode_sources.gather(info)
-    velden = _filter_fields(barcode_sources.merge(info, resultaten))
+    resultaten, rapporten = barcode_sources.gather(info)
+    samengevoegd, herkomst = barcode_sources.merge(info, resultaten)
+    velden = _filter_fields(samengevoegd)
     velden["barcode"] = info.raw
 
     labels = [barcode_sources.SOURCES[naam][0] for naam in resultaten]
@@ -101,17 +109,26 @@ def lookup_barcode_detailed(code):
     antwoord = {
         "barcode": info.raw,
         "fields": velden,
+        "origins": {veld: barcode_sources.SOURCES.get(naam, (naam,))[0]
+                    for veld, naam in herkomst.items() if naam},
         "sources": labels,
         "tried": tried,
+        "diagnostics": [rapport.as_dict() for rapport in rapporten],
         "links": barcode_sources.search_links(info, velden.get("title")),
         "found": bool(velden.get("title")),
         "kind": "isbn" if info.is_isbn else ("ean" if len(info.raw) >= 12 else "onbekend"),
         "suggested_type": _guess_type(info, resultaten, velden),
+        "cached": False,
     }
 
-    if len(_CACHE) >= _CACHE_MAX:
-        _CACHE.clear()
-    _CACHE[info.raw] = antwoord
+    # Een lege uitkomst wordt bewust níét bewaard. Vroeger bleef die tot aan de
+    # volgende herstart hangen, waardoor opnieuw scannen na een storing bij een
+    # bron gegarandeerd weer niets opleverde — zonder dat er ook maar één
+    # aanvraag vertrok. Alleen een geslaagde opzoeking is het bewaren waard.
+    if antwoord["found"]:
+        if len(_CACHE) >= _CACHE_MAX:
+            _CACHE.clear()
+        _CACHE[info.raw] = antwoord
     return antwoord
 
 
