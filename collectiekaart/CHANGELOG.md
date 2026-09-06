@@ -1,5 +1,27 @@
 # Wijzigingen
 
+## 0.1.7
+
+- Massa-import uit Excel gaf een 500-fout zodra een tekstveld — reeks, auteur,
+  collectie, commentaar, muzikant of een taal — toevallig een getal bevatte.
+  Excel levert zo'n cel als een getal aan in plaats van als tekst, en de
+  validatiefunctie ging er onterecht van uit dat alle invoer al tekst was.
+  Getallen worden nu ook in tekstvelden aanvaard; een heel getal zoals 12.0
+  wordt daarbij als "12" weergegeven, niet als "12.0".
+
+## 0.1.6
+
+- Het invulformulier reageerde in de Vivaldi-browser en in de Companion-app op
+  Android niet meer op een wisseling van type, terwijl hetzelfde in Chrome en
+  Edge wel werkte. De oorzaak lag niet bij de browser, maar bij de service
+  worker van de Home Assistant-frontend: die slaat elk bestand waarvan de URL
+  "/static/" bevat blijvend op, ook bestanden van een add-on achter Ingress, en
+  negeert daarbij het versienummer dat een nieuw opgehaald bestand had moeten
+  afdwingen. Wie de app al eens via Home Assistant geopend had, bleef zo
+  vastzitten aan de JavaScript en stijl van een oudere versie. Statische
+  bestanden staan voortaan onder `/assets` in plaats van `/static`, een pad dat
+  de service worker niet apart behandelt.
+
 ## 0.1.5
 
 - Het invulformulier reageerde na een update niet meer op een wisseling van
