@@ -91,21 +91,21 @@
         {% for row in analysis %}
         <tr>
           <td data-label="Reeks"><strong>{{ row.series }}</strong></td>
-          <td data-label="Ontbrekende nummers">
+          <td data-label="Ontbrekende nummers" class="wrap-cell">
             {% if row.missing %}
-              <span class="overdue mono">{{ row.missing | join(', ') }}</span>
+              <span class="overdue mono">{{ row.missing_text }}</span>
             {% else %}
               <span class="ok-text">volledig</span>
             {% endif %}
           </td>
-          <td data-label="Nieuw bij De Poort">
+          <td data-label="Nieuw bij De Poort" class="wrap-cell">
             {% set check = row.check %}
             {% if not check %}
               <span class="muted">nog niet gecontroleerd</span>
             {% elif not check.ok %}
               <span class="overdue">{{ check.message or 'lukte niet' }}</span>
             {% elif check.new_numbers %}
-              <span class="overdue mono">{{ check.new_numbers | join(', ') }}</span>
+              <span class="overdue mono">{{ row.new_text }}</span>
             {% else %}
               <span class="ok-text">niets nieuws</span>
             {% endif %}

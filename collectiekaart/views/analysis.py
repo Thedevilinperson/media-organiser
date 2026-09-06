@@ -9,7 +9,7 @@ from models import Media, MediaType, get_setting
 from models_series import SeriesCheck
 from security import clean_text, safe_float
 from services.jobs import run_series_check
-from services.series_analysis import missing_numbers_per_series
+from services.series_analysis import compact_ranges, missing_numbers_per_series
 from services.value_estimation import estimate_value_lastdodo, search_url
 
 analysis_bp = Blueprint("analysis", __name__, url_prefix="/analyse")
@@ -90,6 +90,11 @@ def series():
     for row in analysis:
         row["check"] = checks.get(row["series"])
         row["has_new"] = _has_new_numbers(row["check"])
+        # Compacte notatie ("9–13" i.p.v. "9, 10, 11, 12, 13"): één reeks met
+        # honderden ontbrekende nummers maakte de kolom anders zo breed dat
+        # de kolom "Nieuw bij De Poort" ernaast buiten beeld viel.
+        row["missing_text"] = compact_ranges(row["missing"])
+        row["new_text"] = compact_ranges(row["check"].new_numbers) if row["has_new"] else ""
 
     # Statusfilter: werkt op het resultaat van de analyse (ontbrekende nummers
     # + laatste controle bij De Poort), niet op de ruwe items, en staat dus los

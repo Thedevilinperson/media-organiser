@@ -115,6 +115,8 @@
   <p>
     Onder <a href="{{ url_for('analysis.series') }}">Reeksen</a> zie je per reeks welke nummers
     ontbreken tussen je laagste en je hoogste nummer. Dat rekent de app zelf uit, zonder internet.
+    Opeenvolgende nummers staan compact genoteerd: "4, 9–13" betekent dat 4, 9, 10, 11, 12 en 13
+    ontbreken. Dezelfde notatie geldt voor de nieuwe nummers bij De Poort.
   </p>
   <p>
     Met "Controleer nu bij De Poort" zoekt de app op hun website naar albums van elke reeks en
@@ -234,12 +236,18 @@
     met Ctrl+F5 (op een telefoon: wis de sitegegevens van deze pagina).
   </p>
   <p>
-    <strong>Na een update zie ik ergens nog de oude inhoud staan, bijvoorbeeld een kolom die
-    zogezegd al toegevoegd is.</strong> Vanaf versie 0.1.11 sturen alle pagina's een header mee die
-    caching uitdrukkelijk verbiedt, zodat dit niet meer zou mogen voorkomen. Kom je van een oudere
-    versie, dan kon een pagina zonder filters of zoekterm in de link soms toch nog de vorige versie
-    tonen terwijl dezelfde pagina mét een filter erbij al wel de nieuwe versie liet zien; dat was
-    precies dit probleem. Eén keer Ctrl+F5 lost het meteen op.
+    <strong>Een kolom rechts in een tabel ontbreekt.</strong> Tabellen schuiven horizontaal zodra
+    ze breder zijn dan het scherm; de schuifbalk staat helemaal onderaan de tabel en valt bij een
+    lange lijst dus niet op. Vóór versie 0.1.12 kon op de reeksenpagina één reeks met honderden
+    ontbrekende nummers de tabel zo breed maken dat de kolom "Nieuw bij De Poort" buiten beeld
+    stond. Sindsdien breken die cellen af en worden lange reeksen compact genoteerd (zie
+    <a href="#reeksen">Reeksen aanvullen</a>). Zie je het toch nog ergens: scrol de tabel naar
+    rechts, of maak het browservenster breder.
+  </p>
+  <p>
+    <strong>Na een update zie ik nog de oude inhoud.</strong> Vanaf versie 0.1.11 sturen alle
+    pagina's een header mee die caching uitdrukkelijk verbiedt. Kom je van een oudere versie,
+    herlaad dan één keer met Ctrl+F5.
   </p>
   <p>
     <strong>"Ongeldig of ontbrekend CSRF-token".</strong> Je formulier stond te lang open. Herlaad

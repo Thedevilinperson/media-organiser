@@ -1,19 +1,33 @@
 # Wijzigingen
 
+## 0.1.12
+
+- De kolom "Nieuw bij De Poort" op de reeksenpagina leek te ontbreken zodra
+  je geen statusfilter koos, en verscheen wél bij de filters "mét nieuwe
+  gevonden". De kolom stond er altijd, maar buiten beeld: één reeks met een
+  heel lange lijst ontbrekende nummers (bv. nummer 1 en nummer 400 in bezit,
+  de rest niet) maakte die cel — die niet mocht afbreken — zo breed dat de
+  hele tabel breder werd dan het scherm. De derde kolom stond dan rechts
+  buiten beeld, enkel bereikbaar via de horizontale schuifbalk helemaal
+  onderaan de tabel. Met een filter bleven alleen korte reeksen over, paste
+  de tabel weer, en was de kolom "plots" zichtbaar. Dit verklaart ook waarom
+  de kolom al ontbrak in oudere versies.
+- Twee oplossingen tegelijk: de cellen met ontbrekende en nieuwe nummers
+  mogen nu afbreken over meerdere regels, en lange opeenvolgende reeksen
+  worden compact genoteerd — "2–399" in plaats van 398 losse nummers, en
+  "4, 9–13" in plaats van "4, 9, 10, 11, 12, 13". Twee opeenvolgende nummers
+  blijven los staan ("1, 2"); vanaf drie wordt het een bereik.
+
 ## 0.1.11
 
-- Na een update bleef de pagina Reeksen zonder filters soms de oude inhoud
-  tonen (bv. zonder de kolom "Nieuw bij De Poort"), terwijl dezelfde pagina
-  mét een filter in de link erbij wel meteen de nieuwe versie liet zien. De
-  oorzaak: dynamische pagina's droegen geen `Cache-Control`-header, waardoor
-  een tussenliggende laag — de browser zelf, een reverse proxy, of Home
-  Assistant Ingress — een eerder opgevraagde URL zonder querystring bleef
-  hergebruiken in plaats van ze opnieuw bij de server op te vragen. Elke
-  pagina krijgt nu expliciet `Cache-Control: no-store` mee. Statische
-  bestanden (css/js onder `/assets`) zijn hiervan uitgezonderd: die behouden
-  hun eigen, bewust langere bewaartermijn met cachebreker (zie 0.1.5/0.1.6).
-  Zie je na deze update toch nog een oude pagina, dan volstaat één keer
-  Ctrl+F5.
+- Elke dynamische pagina krijgt nu expliciet `Cache-Control: no-store` mee,
+  zodat geen enkele tussenliggende laag (browser, reverse proxy, Home
+  Assistant Ingress) na een update nog een oude pagina kan blijven tonen.
+  Statische bestanden (css/js onder `/assets`) zijn hiervan uitgezonderd: die
+  behouden hun eigen, bewust langere bewaartermijn met cachebreker (zie
+  0.1.5/0.1.6). Deze wijziging werd toegevoegd als vermoedelijke oorzaak van
+  de "ontbrekende" kolom hierboven; dat bleek ze niet te zijn (zie 0.1.12),
+  maar ze blijft als preventieve maatregel nuttig.
 
 ## 0.1.10
 

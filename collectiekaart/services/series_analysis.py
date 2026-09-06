@@ -46,6 +46,34 @@ def missing_numbers_per_series(media_items):
     return result
 
 
+def compact_ranges(numbers):
+    """
+    Schrijft een lijst nummers compact: [4, 9, 10, 11, 12, 13] wordt
+    "4, 9–13". Twee opeenvolgende nummers blijven los ("1, 2"), vanaf drie
+    wordt het een bereik. Zonder dit kon één reeks met honderden ontbrekende
+    nummers een tabelcel zo breed maken dat de kolommen ernaast buiten beeld
+    vielen.
+    """
+    values = sorted({int(n) for n in (numbers or []) if float(n).is_integer()})
+    if not values:
+        return ""
+    parts = []
+    start = prev = values[0]
+    for n in values[1:] + [None]:
+        if n is not None and n == prev + 1:
+            prev = n
+            continue
+        if prev == start:
+            parts.append(str(start))
+        elif prev == start + 1:
+            parts.append(f"{start}, {prev}")
+        else:
+            parts.append(f"{start}–{prev}")
+        if n is not None:
+            start = prev = n
+    return ", ".join(parts)
+
+
 def parse_series_page(html):
     """
     Best-effort parser voor een catalogus- of zoekpagina van De Poort.

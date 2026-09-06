@@ -317,6 +317,15 @@ table.data-table td[data-label="Titel"] {
   white-space: normal;
 }
 
+/* Reeksen: de lijst ontbrekende of nieuwe nummers mag afbreken. Eén reeks
+   met een heel lange lijst maakte de kolom anders breder dan het scherm,
+   zodat de kolom "Nieuw bij De Poort" ernaast onzichtbaar buiten beeld
+   stond en enkel met de horizontale schuifbalk onderaan te bereiken was. */
+table.data-table td.wrap-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 table.data-table tbody tr:hover td { background: #f2f3ee; }
 table.data-table tfoot td { border-top: 2px solid var(--ink); border-bottom: none; padding-top: 10px; }
 
