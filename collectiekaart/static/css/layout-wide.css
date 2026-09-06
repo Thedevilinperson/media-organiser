@@ -1,0 +1,38 @@
+/*
+  Extra opmaak voor pagina's met een grote tabel: Overzicht, Volledige lijst,
+  Waarde, Uitleen en Reeksen. Bewust een los bestand in plaats van een
+  wijziging in style.css zelf: zo kan dit nooit per ongeluk iets in de rest
+  van de opmaak raken, en is meteen duidelijk welke regels hiervoor bijkwamen.
+
+  Wordt na style.css geladen, zodat de kleinere tabelpadding hieronder wint
+  bij gelijke specificiteit. .app-shell.wide en .intro binnen .wide winnen
+  sowieso, ongeacht laadvolgorde, omdat ze een hogere specificiteit hebben
+  dan de regels die ze overschrijven.
+*/
+
+.app-shell.wide {
+  max-width: 1800px;
+}
+
+/* Op de reeksenpagina moet de inleidende tekst de volle breedte gebruiken in
+   plaats van de leesbreedte van 68ch die .intro elders bewust aanhoudt. */
+.app-shell.wide .intro {
+  max-width: none;
+}
+
+/* Minder witruimte tussen de rijen: duidelijk zichtbaar bij een tabel met
+   honderden rijen zoals de Volledige lijst. Enkel vanaf 701px: onder die
+   breedte wordt elke rij in style.css al een kaartje met een eigen, bewust
+   krappe padding — zonder deze grens zou deze regel die kaartjes ongewild
+   opnieuw aanpassen, want dit bestand laadt na style.css en wint dus op
+   gelijke specificiteit, media query of niet. */
+@media (min-width: 701px) {
+  table.data-table th,
+  table.data-table td {
+    padding: 5px 8px;
+  }
+
+  table.data-table.compact td {
+    padding: 4px 8px;
+  }
+}

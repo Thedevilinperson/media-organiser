@@ -1,12 +1,15 @@
 """Reeksanalyse en waardebepaling van de collectie."""
-from flask import Blueprint, jsonify, render_template, request
+import threading
+
+from flask import Blueprint, current_app, jsonify, render_template, request
 from sqlalchemy.orm import joinedload
 
 from extensions import db
-from models import Media, MediaType
-from flask import flash, redirect, url_for
+from models import Media, MediaType, get_setting
+from models_series import SeriesCheck
 from security import clean_text, safe_float
-from services.series_analysis import check_new_releases, missing_numbers_per_series
+from services.jobs import run_series_check
+from services.series_analysis import missing_numbers_per_series
 from services.value_estimation import estimate_value_lastdodo, search_url
 
 analysis_bp = Blueprint("analysis", __name__, url_prefix="/analyse")
@@ -17,21 +20,88 @@ SERIES_PROFILES = ("strip", "boek")
 
 @analysis_bp.route("/reeksen")
 def series():
-    items = (
+    filters = {
+        "type": request.args.get("type", "").strip(),
+        "owner": request.args.get("owner", "").strip(),
+        "series": request.args.get("series", "").strip(),
+        "author": request.args.get("author", "").strip(),
+    }
+
+    all_items = (
         db.session.query(Media)
+        .options(joinedload(Media.media_type), joinedload(Media.owner))
         .join(MediaType)
         .filter(MediaType.field_profile.in_(SERIES_PROFILES))
         .filter(Media.series.isnot(None), Media.series_number.isnot(None))
         .all()
     )
-    return render_template("series_analysis.html", analysis=missing_numbers_per_series(items))
+
+    def matches(m, ignore=None):
+        if filters["type"] and ignore != "type":
+            if not m.media_type or m.media_type.code != filters["type"]:
+                return False
+        if filters["owner"] and ignore != "owner":
+            if not m.owner or m.owner.name != filters["owner"]:
+                return False
+        if filters["series"] and ignore != "series" and m.series != filters["series"]:
+            return False
+        if filters["author"] and ignore != "author" and (m.author or "") != filters["author"]:
+            return False
+        return True
+
+    # Cascaderende keuzelijsten: elke lijst toont enkel wat nog mogelijk is
+    # gegeven de andere filters, net als bij de volledige lijst.
+    def options(ignore, extract):
+        values = set()
+        for m in all_items:
+            if matches(m, ignore=ignore):
+                v = extract(m)
+                if v:
+                    values.add(v)
+        return values
+
+    type_options = sorted(
+        options("type", lambda m: (m.media_type.code, m.media_type.label) if m.media_type else None),
+        key=lambda pair: pair[1].lower(),
+    )
+    owner_options = sorted(options("owner", lambda m: m.owner.name if m.owner else None), key=str.lower)
+    series_options = sorted(options("series", lambda m: m.series), key=str.lower)
+    author_options = sorted(options("author", lambda m: m.author), key=str.lower)
+
+    filtered_items = [m for m in all_items if matches(m)]
+    analysis = missing_numbers_per_series(filtered_items)
+
+    checks = {c.series: c for c in db.session.query(SeriesCheck).all()}
+    for row in analysis:
+        row["check"] = checks.get(row["series"])
+
+    return render_template(
+        "series_analysis.html",
+        analysis=analysis,
+        filters=filters,
+        type_options=type_options,
+        owner_options=owner_options,
+        series_options=series_options,
+        author_options=author_options,
+        check_running=get_setting("series_check_running") == "1",
+    )
 
 
-@analysis_bp.route("/reeksen/nieuw", methods=["POST"])
-def series_check_new():
-    series_name = (request.form.get("series") or "").strip()[:200]
-    owned = [n for n in (safe_float(v) for v in request.form.getlist("owned")) if n is not None]
-    return jsonify(check_new_releases(series_name, owned))
+@analysis_bp.route("/reeksen/controleer-alles", methods=["POST"])
+def series_check_all():
+    """
+    Start de controle bij De Poort voor alle reeksen op de achtergrond. Draait
+    in een aparte thread zodat deze aanvraag meteen terugkeert: met veel
+    reeksen en de verplichte pauze tussen aanvragen (zie services/jobs.py)
+    kan de volledige controle enkele minuten duren, te lang om een
+    browserverzoek op te laten wachten.
+    """
+    if get_setting("series_check_running") == "1":
+        return jsonify({"ok": False, "error": "Er loopt al een controle op de achtergrond."})
+
+    app_obj = current_app._get_current_object()
+    threading.Thread(target=run_series_check, args=(app_obj,), daemon=True).start()
+    return jsonify({"ok": True})
 
 
 @analysis_bp.route("/waarde")

@@ -17,7 +17,7 @@ from config import Config
 from extensions import db
 from middleware import IngressMiddleware
 from security import register_security
-from services.jobs import check_overdue_loans_job
+from services.jobs import check_overdue_loans_job, run_series_check
 from version import __version__
 from views import register_blueprints
 
@@ -63,6 +63,10 @@ def create_app():
 
     with app.app_context():
         from models import ensure_schema, seed_defaults  # bewust laat geïmporteerd
+        # Registreert de tabel voor de reeksencontrole bij db.create_all().
+        # Los model in models_series.py, zodat models.py zelf niet gewijzigd
+        # hoeft te worden voor deze ene extra tabel.
+        import models_series  # noqa: F401
         db.create_all()
         ensure_schema()
         seed_defaults()
@@ -128,8 +132,9 @@ def register_error_handlers(app):
 
 def start_scheduler(app):
     """
-    Dagelijkse controle op te lang uitgeleende media. Draait niet in het
-    herlaadproces van de ontwikkelserver, anders zou de taak dubbel lopen.
+    Dagelijkse controle op te lang uitgeleende media, en de wekelijkse
+    controle bij De Poort op nieuwe nummers per reeks. Draait niet in het
+    herlaadproces van de ontwikkelserver, anders zouden de taken dubbel lopen.
     """
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" and app.debug:
         return None
@@ -140,6 +145,14 @@ def start_scheduler(app):
         hours=24,
         args=[app],
         id="overdue_check",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_series_check,
+        "interval",
+        weeks=1,
+        args=[app],
+        id="series_check",
         replace_existing=True,
     )
     scheduler.start()

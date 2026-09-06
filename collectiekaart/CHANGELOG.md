@@ -1,5 +1,27 @@
 # Wijzigingen
 
+## 0.1.8
+
+- Overzicht, Volledige lijst, Waarde, Uitleen en Reeksen gebruiken voortaan de
+  volle breedte van het scherm in plaats van een vaste breedte van 1180px, en
+  de rijen van een tabel staan dichter op elkaar. Op een breed scherm bleef
+  daardoor voorheen veel ruimte onbenut, vooral zichtbaar bij de Volledige
+  lijst met veel kolommen. Formulierpagina's zoals Toevoegen en Instellingen
+  behouden bewust de smallere, leesbare breedte.
+- De controle bij De Poort op nieuwe nummers per reeks werkte tot nu toe enkel
+  per reeks apart, op een knop per rij. Dat is vervangen door één controle
+  die alle reeksen doorloopt: automatisch één keer per week op de
+  achtergrond, en op elk moment ook zelf te starten met de knop "Controleer
+  nu bij De Poort". Tussen twee reeksen zit telkens een vaste pauze, zodat
+  deze controle nooit als een stortvloed van aanvragen bij De Poort
+  binnenkomt. Het laatste resultaat per reeks wordt bewaard en blijft
+  zichtbaar na het herladen van de pagina.
+- De reeksenpagina toont voortaan enkel de ontbrekende nummers en het
+  resultaat van de laatste controle bij De Poort; "in bezit" en "hoogste
+  nummer" stonden er vooral ter info en maakten de tabel breder dan nodig.
+  Er staan nu ook filters op type, eigenaar, reeks en auteur, net als op de
+  volledige lijst.
+
 ## 0.1.7
 
 - Massa-import uit Excel gaf een 500-fout zodra een tekstveld — reeks, auteur,
