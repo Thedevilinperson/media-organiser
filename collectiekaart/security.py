@@ -90,7 +90,7 @@ def register_security(app):
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("Referrer-Policy", "same-origin")
         # Geen 'unsafe-inline' voor scripts: alle JavaScript staat in
-        # aparte bestanden onder /static/js. 'frame-ancestors' wordt bewust
+        # aparte bestanden. 'frame-ancestors' wordt bewust
         # NIET beperkt, anders kan Home Assistant de add-on niet in een
         # iframe (Ingress) tonen.
         resp.headers.setdefault(

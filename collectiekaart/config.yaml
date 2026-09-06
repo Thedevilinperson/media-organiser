@@ -1,8 +1,8 @@
 name: "Collectiekaart"
-version: "0.1.5"
+version: "0.1.6"
 slug: "collectiekaart"
 description: "Beheer je boeken, strips, comics, manga, anime, cd's en dvd's"
-url: "https://github.com/jouw-gebruikersnaam/collectiekaart"
+url: "https://github.com/Thedevilinperson/media-organiser.git"
 arch:
   - aarch64
   - amd64

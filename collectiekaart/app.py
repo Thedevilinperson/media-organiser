@@ -26,7 +26,25 @@ log = logging.getLogger("collectiekaart")
 
 
 def create_app():
-    app = Flask(__name__)
+    # Statische bestanden onder /assets in plaats van het standaard /static.
+    #
+    # De service worker van de Home Assistant-frontend bevat deze regel:
+    #     registerRoute(/\/(static|frontend_latest|frontend_es5)\/.+/,
+    #                   new CacheFirst({ matchOptions: { ignoreSearch: true } }))
+    # Die regex is niet verankerd en matcht dus ook
+    #     /api/hassio_ingress/<token>/static/js/media_form.js
+    # Eenmaal opgeslagen wordt zo'n bestand nooit meer bij de server nagevraagd
+    # (CacheFirst) en wordt onze ?v=-cachebreker genegeerd (ignoreSearch).
+    # Gevolg: na een update van de add-on bleef de browser met de JavaScript en
+    # CSS van de vorige versie werken, en reageerde het formulier niet meer op
+    # een wisseling van type. Onder /assets valt de URL onder HA's '/api/'-regel
+    # (NetworkOnly) en komt het bestand altijd van het netwerk; de gewone
+    # browsercache en de ?v=-parameter doen dan wél hun werk.
+    #
+    # url_for("static", ...) en de asset()-helper werken ongewijzigd door; enkel
+    # het pad in de URL verandert. Standalone (zonder Ingress) is er geen
+    # service worker en maakt het niets uit.
+    app = Flask(__name__, static_url_path="/assets")
     app.config.from_object(Config)
     # Veilig, want elke URL naar een statisch bestand draagt het versienummer:
     # bij een update wijzigt de URL en haalt de browser het bestand opnieuw op.
@@ -61,6 +79,10 @@ def register_filters(app):
         nummer blijft een browser het opgeslagen bestand van een vorige versie
         gebruiken, ook na een update van de add-on: het formulier werkt dan met
         oude JavaScript en reageert niet meer op een wisseling van type.
+
+        Let op: dit werkt alleen als de URL niet door de service worker van
+        Home Assistant onderschept wordt — zie het commentaar bij Flask(...)
+        in create_app().
         """
         from flask import url_for
         return url_for("static", filename=filename, v=__version__)
