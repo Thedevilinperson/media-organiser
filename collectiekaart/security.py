@@ -104,6 +104,16 @@ def register_security(app):
     def _security_headers(resp):
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("Referrer-Policy", "same-origin")
+        # Dynamische pagina's mogen nooit gecachet blijven hangen bij een
+        # tussenliggende laag (browser, reverse proxy, Home Assistant
+        # Ingress). Zonder deze header bleek een pagina zonder querystring
+        # (bv. /analyse/reeksen) na een update soms toch de oude inhoud te
+        # blijven tonen, terwijl dezelfde pagina mét filters in de
+        # querystring (een andere URL) wel meteen ververst werd. Statische
+        # bestanden onder /assets zetten zelf al hun eigen Cache-Control met
+        # een langere bewaartermijn (zie SEND_FILE_MAX_AGE_DEFAULT hierboven
+        # in app.py); setdefault() laat die instelling ongemoeid.
+        resp.headers.setdefault("Cache-Control", "no-store")
         # Geen 'unsafe-inline' voor scripts: alle JavaScript staat in
         # aparte bestanden onder /assets/js. 'frame-ancestors' wordt bewust
         # NIET beperkt, anders kan Home Assistant de add-on niet in een

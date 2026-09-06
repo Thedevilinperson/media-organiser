@@ -1,5 +1,20 @@
 # Wijzigingen
 
+## 0.1.11
+
+- Na een update bleef de pagina Reeksen zonder filters soms de oude inhoud
+  tonen (bv. zonder de kolom "Nieuw bij De Poort"), terwijl dezelfde pagina
+  mét een filter in de link erbij wel meteen de nieuwe versie liet zien. De
+  oorzaak: dynamische pagina's droegen geen `Cache-Control`-header, waardoor
+  een tussenliggende laag — de browser zelf, een reverse proxy, of Home
+  Assistant Ingress — een eerder opgevraagde URL zonder querystring bleef
+  hergebruiken in plaats van ze opnieuw bij de server op te vragen. Elke
+  pagina krijgt nu expliciet `Cache-Control: no-store` mee. Statische
+  bestanden (css/js onder `/assets`) zijn hiervan uitgezonderd: die behouden
+  hun eigen, bewust langere bewaartermijn met cachebreker (zie 0.1.5/0.1.6).
+  Zie je na deze update toch nog een oude pagina, dan volstaat één keer
+  Ctrl+F5.
+
 ## 0.1.10
 
 - De reeksenpagina had geen manier om meteen te zien welke reeksen aandacht

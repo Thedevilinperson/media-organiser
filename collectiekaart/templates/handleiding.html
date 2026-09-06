@@ -234,6 +234,14 @@
     met Ctrl+F5 (op een telefoon: wis de sitegegevens van deze pagina).
   </p>
   <p>
+    <strong>Na een update zie ik ergens nog de oude inhoud staan, bijvoorbeeld een kolom die
+    zogezegd al toegevoegd is.</strong> Vanaf versie 0.1.11 sturen alle pagina's een header mee die
+    caching uitdrukkelijk verbiedt, zodat dit niet meer zou mogen voorkomen. Kom je van een oudere
+    versie, dan kon een pagina zonder filters of zoekterm in de link soms toch nog de vorige versie
+    tonen terwijl dezelfde pagina mét een filter erbij al wel de nieuwe versie liet zien; dat was
+    precies dit probleem. Eén keer Ctrl+F5 lost het meteen op.
+  </p>
+  <p>
     <strong>"Ongeldig of ontbrekend CSRF-token".</strong> Je formulier stond te lang open. Herlaad
     de pagina en verstuur opnieuw.
   </p>
